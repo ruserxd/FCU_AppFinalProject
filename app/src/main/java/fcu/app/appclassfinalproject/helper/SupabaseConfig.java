@@ -110,7 +110,7 @@ public class SupabaseConfig {
     /**
      * 獲取當前用戶的訪問令牌
      */
-    private String getAccessToken() {
+    public String getAccessToken() {
         SharedPreferences prefs = context.getSharedPreferences("FCUPrefs", Context.MODE_PRIVATE);
         return prefs.getString("supabase_access_token", null);
     }

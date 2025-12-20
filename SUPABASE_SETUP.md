@@ -10,102 +10,27 @@
 
 ## 2. 設置資料庫表結構
 
-在 Supabase SQL Editor 中執行以下 SQL 來創建所需的表：
+### 方法一：使用完整設置腳本（推薦）
 
-```sql
--- Users 表
-CREATE TABLE IF NOT EXISTS Users (
-    id SERIAL PRIMARY KEY,
-    account TEXT NOT NULL UNIQUE,
-    email TEXT NOT NULL UNIQUE,
-    firebase_uid TEXT UNIQUE,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+在 Supabase Dashboard 中：
+1. 前往 **SQL Editor**
+2. 點擊 **New Query**
+3. 複製並執行 `SUPABASE_DATABASE_SCHEMA.sql` 文件中的所有 SQL 語句
 
--- Projects 表
-CREATE TABLE IF NOT EXISTS Projects (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    summary TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+這個腳本包含：
+- ✅ 所有資料表的創建
+- ✅ 索引（提升查詢效能）
+- ✅ 觸發器（自動更新時間戳）
+- ✅ Row Level Security (RLS) 策略
+- ✅ 視圖（方便查詢）
+- ✅ 函數（業務邏輯）
+- ✅ 註釋（文檔說明）
 
--- Issues 表
-CREATE TABLE IF NOT EXISTS Issues (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    summary TEXT NOT NULL,
-    start_time TEXT NOT NULL,
-    end_time TEXT NOT NULL,
-    status TEXT NOT NULL,
-    designee TEXT NOT NULL,
-    project_id INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    FOREIGN KEY (project_id) REFERENCES Projects(id) ON DELETE CASCADE
-);
+**詳細說明請參考**：[SUPABASE_DATABASE_SCHEMA.sql](SUPABASE_DATABASE_SCHEMA.sql)
 
--- UserProject 表（多對多關係）
-CREATE TABLE IF NOT EXISTS UserProject (
-    user_id INTEGER NOT NULL,
-    project_id INTEGER NOT NULL,
-    PRIMARY KEY (user_id, project_id),
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (project_id) REFERENCES Projects(id) ON DELETE CASCADE
-);
+### 方法二：逐步設置
 
--- UserIssue 表（多對多關係）
-CREATE TABLE IF NOT EXISTS UserIssue (
-    user_id INTEGER NOT NULL,
-    issue_id INTEGER NOT NULL,
-    PRIMARY KEY (user_id, issue_id),
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (issue_id) REFERENCES Issues(id) ON DELETE CASCADE
-);
-
--- Friends 表
-CREATE TABLE IF NOT EXISTS Friends (
-    user_id INTEGER NOT NULL,
-    friend_id INTEGER NOT NULL,
-    PRIMARY KEY (user_id, friend_id),
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (friend_id) REFERENCES Users(id) ON DELETE CASCADE
-);
-
--- 啟用 Row Level Security (RLS)
-ALTER TABLE Users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE Projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE Issues ENABLE ROW LEVEL SECURITY;
-ALTER TABLE UserProject ENABLE ROW LEVEL SECURITY;
-ALTER TABLE UserIssue ENABLE ROW LEVEL SECURITY;
-ALTER TABLE Friends ENABLE ROW LEVEL SECURITY;
-
--- 創建策略（允許認證用戶訪問）
-CREATE POLICY "Users can read all users" ON Users FOR SELECT USING (true);
-CREATE POLICY "Users can insert own data" ON Users FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update own data" ON Users FOR UPDATE USING (true);
-
-CREATE POLICY "Users can read all projects" ON Projects FOR SELECT USING (true);
-CREATE POLICY "Users can insert projects" ON Projects FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update projects" ON Projects FOR UPDATE USING (true);
-CREATE POLICY "Users can delete projects" ON Projects FOR DELETE USING (true);
-
-CREATE POLICY "Users can read all issues" ON Issues FOR SELECT USING (true);
-CREATE POLICY "Users can insert issues" ON Issues FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update issues" ON Issues FOR UPDATE USING (true);
-CREATE POLICY "Users can delete issues" ON Issues FOR DELETE USING (true);
-
-CREATE POLICY "Users can read all user projects" ON UserProject FOR SELECT USING (true);
-CREATE POLICY "Users can insert user projects" ON UserProject FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can delete user projects" ON UserProject FOR DELETE USING (true);
-
-CREATE POLICY "Users can read all user issues" ON UserIssue FOR SELECT USING (true);
-CREATE POLICY "Users can insert user issues" ON UserIssue FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can delete user issues" ON UserIssue FOR DELETE USING (true);
-
-CREATE POLICY "Users can read all friends" ON Friends FOR SELECT USING (true);
-CREATE POLICY "Users can insert friends" ON Friends FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can delete friends" ON Friends FOR DELETE USING (true);
-```
+如果您想逐步設置，可以參考 `SUPABASE_DATABASE_SCHEMA.sql` 文件中的各個部分。
 
 ## 3. 設置 Gmail OAuth
 
@@ -137,9 +62,33 @@ SupabaseConfig.getInstance(context).setConfig(
 3. 創建議題
 4. 好友功能
 
+## 5. 測試連接
+
+運行應用程式並測試：
+1. 註冊/登入功能
+2. 創建專案
+3. 創建議題
+4. 好友功能
+
+## 6. 相關文檔
+
+- **[SUPABASE_DATABASE_SCHEMA.sql](SUPABASE_DATABASE_SCHEMA.sql)**：完整的資料庫設置腳本
+  - 包含所有表結構、索引、觸發器、RLS 策略、視圖、函數
+  - 建議使用此文件進行資料庫設置
+
+- **[SUPABASE_DATABASE_API.md](SUPABASE_DATABASE_API.md)**：資料庫 API 文檔
+  - 詳細說明所有可用的資料庫操作方法
+  - 包含使用範例和最佳實踐
+
+- **[DATABASE_MIGRATION_GUIDE.md](DATABASE_MIGRATION_GUIDE.md)**：資料庫遷移指南
+  - 從 SQLite 遷移到 Supabase 的完整指南
+  - 包含代碼遷移範例和測試檢查清單
+
 ## 注意事項
 
 - 確保 Supabase 專案的 URL 和 API Key 正確設置
 - RLS 策略可能需要根據您的需求調整
 - 生產環境中應該使用環境變數或安全的配置管理方式存儲 API Key
+- 建議先閱讀 `SUPABASE_DATABASE_SCHEMA.sql` 了解完整的資料庫結構
+- 遷移代碼時參考 `DATABASE_MIGRATION_GUIDE.md` 中的範例
 

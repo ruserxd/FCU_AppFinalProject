@@ -18,14 +18,14 @@ public class SupabaseDatabaseHelper {
     private static final String TAG = "SupabaseDatabaseHelper";
     private SupabaseConfig config;
     private Context context;
-    
+
     public SupabaseDatabaseHelper(Context context) {
         this.context = context;
         this.config = SupabaseConfig.getInstance(context);
     }
-    
+
     // ==================== Users 表操作 ====================
-    
+
     /**
      * 插入用戶
      */
@@ -37,7 +37,7 @@ public class SupabaseDatabaseHelper {
             if (firebaseUid != null) {
                 body.addProperty("firebase_uid", firebaseUid);
             }
-            
+
             String response = config.executePost("/rest/v1/Users", body);
             return response != null && !response.isEmpty();
         } catch (Exception e) {
@@ -45,7 +45,7 @@ public class SupabaseDatabaseHelper {
             return false;
         }
     }
-    
+
     /**
      * 根據 email 獲取用戶
      */
@@ -63,7 +63,7 @@ public class SupabaseDatabaseHelper {
             return null;
         }
     }
-    
+
     /**
      * 根據 ID 獲取用戶
      */
@@ -81,9 +81,9 @@ public class SupabaseDatabaseHelper {
             return null;
         }
     }
-    
+
     // ==================== Projects 表操作 ====================
-    
+
     /**
      * 插入專案
      */
@@ -92,7 +92,7 @@ public class SupabaseDatabaseHelper {
             JsonObject body = new JsonObject();
             body.addProperty("name", name);
             body.addProperty("summary", summary);
-            
+
             String response = config.executePost("/rest/v1/Projects", body);
             JsonArray array = JsonParser.parseString(response).getAsJsonArray();
             if (array.size() > 0) {
@@ -104,7 +104,7 @@ public class SupabaseDatabaseHelper {
             return null;
         }
     }
-    
+
     /**
      * 獲取用戶的所有專案
      */
@@ -113,7 +113,7 @@ public class SupabaseDatabaseHelper {
             String endpoint = "/rest/v1/UserProject?user_id=eq." + userId + "&select=project_id,Projects(*)";
             String response = config.executeGet(endpoint);
             JsonArray array = JsonParser.parseString(response).getAsJsonArray();
-            
+
             List<JsonObject> projects = new ArrayList<>();
             for (JsonElement element : array) {
                 JsonObject item = element.getAsJsonObject();
@@ -127,7 +127,7 @@ public class SupabaseDatabaseHelper {
             return new ArrayList<>();
         }
     }
-    
+
     /**
      * 獲取專案詳情
      */
@@ -145,7 +145,7 @@ public class SupabaseDatabaseHelper {
             return null;
         }
     }
-    
+
     /**
      * 刪除專案
      */
@@ -159,9 +159,9 @@ public class SupabaseDatabaseHelper {
             return false;
         }
     }
-    
+
     // ==================== UserProject 表操作 ====================
-    
+
     /**
      * 添加用戶到專案
      */
@@ -170,7 +170,7 @@ public class SupabaseDatabaseHelper {
             JsonObject body = new JsonObject();
             body.addProperty("user_id", userId);
             body.addProperty("project_id", projectId);
-            
+
             String response = config.executePost("/rest/v1/UserProject", body);
             return response != null && !response.isEmpty();
         } catch (Exception e) {
@@ -178,7 +178,7 @@ public class SupabaseDatabaseHelper {
             return false;
         }
     }
-    
+
     /**
      * 獲取專案成員
      */
@@ -187,7 +187,7 @@ public class SupabaseDatabaseHelper {
             String endpoint = "/rest/v1/UserProject?project_id=eq." + projectId + "&select=user_id,Users(*)";
             String response = config.executeGet(endpoint);
             JsonArray array = JsonParser.parseString(response).getAsJsonArray();
-            
+
             List<JsonObject> members = new ArrayList<>();
             for (JsonElement element : array) {
                 JsonObject item = element.getAsJsonObject();
@@ -201,14 +201,14 @@ public class SupabaseDatabaseHelper {
             return new ArrayList<>();
         }
     }
-    
+
     // ==================== Issues 表操作 ====================
-    
+
     /**
      * 插入議題
      */
-    public Integer insertIssue(String name, String summary, String startTime, 
-                              String endTime, String status, String designee, int projectId) {
+    public Integer insertIssue(String name, String summary, String startTime,
+            String endTime, String status, String designee, int projectId) {
         try {
             JsonObject body = new JsonObject();
             body.addProperty("name", name);
@@ -218,7 +218,7 @@ public class SupabaseDatabaseHelper {
             body.addProperty("status", status);
             body.addProperty("designee", designee);
             body.addProperty("project_id", projectId);
-            
+
             String response = config.executePost("/rest/v1/Issues", body);
             JsonArray array = JsonParser.parseString(response).getAsJsonArray();
             if (array.size() > 0) {
@@ -230,7 +230,7 @@ public class SupabaseDatabaseHelper {
             return null;
         }
     }
-    
+
     /**
      * 獲取專案的所有議題
      */
@@ -239,7 +239,7 @@ public class SupabaseDatabaseHelper {
             String endpoint = "/rest/v1/Issues?project_id=eq." + projectId + "&select=*&order=id";
             String response = config.executeGet(endpoint);
             JsonArray array = JsonParser.parseString(response).getAsJsonArray();
-            
+
             List<JsonObject> issues = new ArrayList<>();
             for (JsonElement element : array) {
                 issues.add(element.getAsJsonObject());
@@ -250,7 +250,7 @@ public class SupabaseDatabaseHelper {
             return new ArrayList<>();
         }
     }
-    
+
     /**
      * 更新議題
      */
@@ -264,7 +264,7 @@ public class SupabaseDatabaseHelper {
             return false;
         }
     }
-    
+
     /**
      * 刪除議題
      */
@@ -278,9 +278,9 @@ public class SupabaseDatabaseHelper {
             return false;
         }
     }
-    
+
     // ==================== Friends 表操作 ====================
-    
+
     /**
      * 添加好友
      */
@@ -291,19 +291,19 @@ public class SupabaseDatabaseHelper {
             body1.addProperty("user_id", userId);
             body1.addProperty("friend_id", friendId);
             config.executePost("/rest/v1/Friends", body1);
-            
+
             JsonObject body2 = new JsonObject();
             body2.addProperty("user_id", friendId);
             body2.addProperty("friend_id", userId);
             config.executePost("/rest/v1/Friends", body2);
-            
+
             return true;
         } catch (Exception e) {
             Log.e(TAG, "添加好友錯誤", e);
             return false;
         }
     }
-    
+
     /**
      * 獲取用戶的好友列表
      */
@@ -312,7 +312,7 @@ public class SupabaseDatabaseHelper {
             String endpoint = "/rest/v1/Friends?user_id=eq." + userId + "&select=friend_id,Users(*)";
             String response = config.executeGet(endpoint);
             JsonArray array = JsonParser.parseString(response).getAsJsonArray();
-            
+
             List<JsonObject> friends = new ArrayList<>();
             for (JsonElement element : array) {
                 JsonObject item = element.getAsJsonObject();
@@ -326,7 +326,7 @@ public class SupabaseDatabaseHelper {
             return new ArrayList<>();
         }
     }
-    
+
     /**
      * 刪除好友
      */
@@ -335,19 +335,19 @@ public class SupabaseDatabaseHelper {
             // 刪除雙向好友關係
             String endpoint1 = "/rest/v1/Friends?user_id=eq." + userId + "&friend_id=eq." + friendId;
             config.executeDelete(endpoint1);
-            
+
             String endpoint2 = "/rest/v1/Friends?user_id=eq." + friendId + "&friend_id=eq." + userId;
             config.executeDelete(endpoint2);
-            
+
             return true;
         } catch (Exception e) {
             Log.e(TAG, "刪除好友錯誤", e);
             return false;
         }
     }
-    
+
     // ==================== UserIssue 表操作 ====================
-    
+
     /**
      * 添加用戶到議題
      */
@@ -356,7 +356,7 @@ public class SupabaseDatabaseHelper {
             JsonObject body = new JsonObject();
             body.addProperty("user_id", userId);
             body.addProperty("issue_id", issueId);
-            
+
             String response = config.executePost("/rest/v1/UserIssue", body);
             return response != null && !response.isEmpty();
         } catch (Exception e) {
@@ -364,5 +364,218 @@ public class SupabaseDatabaseHelper {
             return false;
         }
     }
-}
 
+    // ==================== 輔助方法（對應 ProjectHelper）====================
+
+    /**
+     * 根據專案ID獲取所有成員的ID列表
+     */
+    public List<Integer> getProjectMemberIds(int projectId) {
+        try {
+            String endpoint = "/rest/v1/UserProject?project_id=eq." + projectId + "&select=user_id";
+            String response = config.executeGet(endpoint);
+            JsonArray array = JsonParser.parseString(response).getAsJsonArray();
+
+            List<Integer> memberIds = new ArrayList<>();
+            for (JsonElement element : array) {
+                memberIds.add(element.getAsJsonObject().get("user_id").getAsInt());
+            }
+            return memberIds;
+        } catch (Exception e) {
+            Log.e(TAG, "獲取專案成員ID列表錯誤", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 根據專案ID獲取所有成員的帳號名稱列表
+     */
+    public List<String> getProjectMemberNames(int projectId) {
+        try {
+            String endpoint = "/rest/v1/UserProject?project_id=eq." + projectId +
+                    "&select=Users(account)&order=Users(account)";
+            String response = config.executeGet(endpoint);
+            JsonArray array = JsonParser.parseString(response).getAsJsonArray();
+
+            List<String> memberNames = new ArrayList<>();
+            for (JsonElement element : array) {
+                JsonObject item = element.getAsJsonObject();
+                if (item.has("Users") && !item.get("Users").isJsonNull()) {
+                    JsonObject user = item.getAsJsonObject("Users");
+                    if (user.has("account")) {
+                        memberNames.add(user.get("account").getAsString());
+                    }
+                }
+            }
+            return memberNames;
+        } catch (Exception e) {
+            Log.e(TAG, "獲取專案成員名稱列表錯誤", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 檢查用戶是否為指定專案的成員
+     */
+    public boolean isUserProjectMember(int userId, int projectId) {
+        try {
+            String endpoint = "/rest/v1/UserProject?user_id=eq." + userId +
+                    "&project_id=eq." + projectId + "&select=user_id";
+            String response = config.executeGet(endpoint);
+            JsonArray array = JsonParser.parseString(response).getAsJsonArray();
+            return array.size() > 0;
+        } catch (Exception e) {
+            Log.e(TAG, "檢查用戶是否為專案成員錯誤", e);
+            return false;
+        }
+    }
+
+    /**
+     * 獲取專案成員數量
+     */
+    public int getProjectMemberCount(int projectId) {
+        try {
+            String endpoint = "/rest/v1/UserProject?project_id=eq." + projectId +
+                    "&select=user_id";
+            String response = config.executeGet(endpoint);
+            JsonArray array = JsonParser.parseString(response).getAsJsonArray();
+            return array.size();
+        } catch (Exception e) {
+            Log.e(TAG, "獲取專案成員數量錯誤", e);
+            return 0;
+        }
+    }
+
+    /**
+     * 根據帳號獲取用戶ID
+     */
+    public Integer getUserIdByAccount(String account) {
+        try {
+            String endpoint = "/rest/v1/Users?account=eq." + account + "&select=id";
+            String response = config.executeGet(endpoint);
+            JsonArray array = JsonParser.parseString(response).getAsJsonArray();
+            if (array.size() > 0) {
+                return array.get(0).getAsJsonObject().get("id").getAsInt();
+            }
+            return null;
+        } catch (Exception e) {
+            Log.e(TAG, "根據帳號獲取用戶ID錯誤", e);
+            return null;
+        }
+    }
+
+    /**
+     * 根據 firebase_uid 獲取用戶ID
+     */
+    public Integer getUserIdByFirebaseUid(String firebaseUid) {
+        try {
+            String endpoint = "/rest/v1/Users?firebase_uid=eq." + firebaseUid + "&select=id";
+            String response = config.executeGet(endpoint);
+            JsonArray array = JsonParser.parseString(response).getAsJsonArray();
+            if (array.size() > 0) {
+                return array.get(0).getAsJsonObject().get("id").getAsInt();
+            }
+            return null;
+        } catch (Exception e) {
+            Log.e(TAG, "根據 firebase_uid 獲取用戶ID錯誤", e);
+            return null;
+        }
+    }
+
+    /**
+     * 獲取所有用戶列表（用於新增好友等場景）
+     */
+    public List<JsonObject> getAllUsers() {
+        try {
+            String endpoint = "/rest/v1/Users?select=id,account,email&order=account";
+            String response = config.executeGet(endpoint);
+            JsonArray array = JsonParser.parseString(response).getAsJsonArray();
+
+            List<JsonObject> users = new ArrayList<>();
+            for (JsonElement element : array) {
+                users.add(element.getAsJsonObject());
+            }
+            return users;
+        } catch (Exception e) {
+            Log.e(TAG, "獲取所有用戶列表錯誤", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 獲取專案的議題數量
+     */
+    public int getProjectIssueCount(int projectId) {
+        try {
+            String endpoint = "/rest/v1/Issues?project_id=eq." + projectId + "&select=id";
+            String response = config.executeGet(endpoint);
+            JsonArray array = JsonParser.parseString(response).getAsJsonArray();
+            return array.size();
+        } catch (Exception e) {
+            Log.e(TAG, "獲取專案議題數量錯誤", e);
+            return 0;
+        }
+    }
+
+    /**
+     * 更新專案資訊
+     */
+    public boolean updateProject(int projectId, JsonObject updates) {
+        try {
+            String endpoint = "/rest/v1/Projects?id=eq." + projectId;
+            config.executePatch(endpoint, updates);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "更新專案錯誤", e);
+            return false;
+        }
+    }
+
+    /**
+     * 移除用戶從專案
+     */
+    public boolean removeUserFromProject(int userId, int projectId) {
+        try {
+            String endpoint = "/rest/v1/UserProject?user_id=eq." + userId +
+                    "&project_id=eq." + projectId;
+            config.executeDelete(endpoint);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "移除用戶從專案錯誤", e);
+            return false;
+        }
+    }
+
+    /**
+     * 移除用戶從議題
+     */
+    public boolean removeUserFromIssue(int userId, int issueId) {
+        try {
+            String endpoint = "/rest/v1/UserIssue?user_id=eq." + userId +
+                    "&issue_id=eq." + issueId;
+            config.executeDelete(endpoint);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "移除用戶從議題錯誤", e);
+            return false;
+        }
+    }
+
+    /**
+     * 根據議題ID獲取議題詳情
+     */
+    public JsonObject getIssueById(int issueId) {
+        try {
+            String endpoint = "/rest/v1/Issues?id=eq." + issueId + "&select=*";
+            String response = config.executeGet(endpoint);
+            JsonArray array = JsonParser.parseString(response).getAsJsonArray();
+            if (array.size() > 0) {
+                return array.get(0).getAsJsonObject();
+            }
+            return null;
+        } catch (Exception e) {
+            Log.e(TAG, "獲取議題詳情錯誤", e);
+            return null;
+        }
+    }
+}
