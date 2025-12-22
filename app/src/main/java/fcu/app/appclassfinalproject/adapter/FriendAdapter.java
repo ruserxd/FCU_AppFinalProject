@@ -2,6 +2,7 @@ package fcu.app.appclassfinalproject.adapter;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.util.Log;
 import android.view.View;
@@ -12,10 +13,16 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import fcu.app.appclassfinalproject.ChatActivity;
 import fcu.app.appclassfinalproject.R;
+import fcu.app.appclassfinalproject.helper.ChatHelper;
+import fcu.app.appclassfinalproject.helper.SqlDataBaseHelper;
 import fcu.app.appclassfinalproject.main_fragments.FriendFragment;
 import fcu.app.appclassfinalproject.model.User;
 import java.util.List;
+import static android.content.Context.MODE_PRIVATE;
+import android.content.SharedPreferences;
+import android.database.sqlite.SQLiteDatabase;
 
 public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.ViewHolder> {
 
@@ -106,11 +113,52 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.ViewHolder
     holder.tvFriendName.setText("👤 " + friend.getAccount());
     holder.tvFriendEmail.setText("📧 " + friend.getEmail());
 
+    // 點擊整個項目進入聊天
+    holder.itemView.setOnClickListener(v -> {
+      startChatWithFriend(friend);
+    });
+
     // 設置刪除按鈕點擊事件
     holder.btnDelete.setOnClickListener(v -> {
       Log.d(TAG, "準備刪除朋友: " + friend.getAccount());
       showDeleteConfirmDialog(friend, position);
     });
+  }
+
+  /**
+   * 開始與好友聊天
+   */
+  private void startChatWithFriend(User friend) {
+    SharedPreferences prefs = context.getSharedPreferences("FCUPrefs", MODE_PRIVATE);
+    int currentUserId = prefs.getInt("user_id", -1);
+
+    if (currentUserId == -1) {
+      Toast.makeText(context, "請先登入", Toast.LENGTH_SHORT).show();
+      return;
+    }
+
+    SqlDataBaseHelper dbHelper = new SqlDataBaseHelper(context);
+    SQLiteDatabase db = dbHelper.getWritableDatabase();
+
+    try {
+      // 建立或獲取一對一聊天室
+      int chatroomId = ChatHelper.createPrivateChatRoom(db, currentUserId, friend.getID());
+
+      if (chatroomId != -1) {
+        Intent intent = new Intent(context, ChatActivity.class);
+        intent.putExtra("chatroom_id", chatroomId);
+        intent.putExtra("chatroom_name", friend.getAccount());
+        intent.putExtra("chatroom_type", "private");
+        context.startActivity(intent);
+      } else {
+        Toast.makeText(context, "無法建立聊天室", Toast.LENGTH_SHORT).show();
+      }
+    } catch (Exception e) {
+      Log.e(TAG, "建立聊天室失敗: " + e.getMessage(), e);
+      Toast.makeText(context, "建立聊天室失敗", Toast.LENGTH_SHORT).show();
+    } finally {
+      db.close();
+    }
   }
 
   @Override

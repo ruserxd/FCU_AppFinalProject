@@ -10,7 +10,7 @@ public class SqlDataBaseHelper extends SQLiteOpenHelper {
 
   private static final String TAG = "SqlDataBaseHelper";
   private static final String DataBaseName = "FCU_FinalProjectDataBase";
-  private static final int DataBaseVersion = 15;
+  private static final int DataBaseVersion = 16;
 
   public SqlDataBaseHelper(@Nullable Context context) {
     super(context, DataBaseName, null, DataBaseVersion);
@@ -88,6 +88,44 @@ public class SqlDataBaseHelper extends SQLiteOpenHelper {
     sqLiteDatabase.execSQL(createFriends);
     Log.d(TAG, "Friends table created");
 
+    // ChatRooms 表（聊天室表）
+    String createChatRoomsTable = "CREATE TABLE IF NOT EXISTS ChatRooms (" +
+        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+        "name TEXT," +
+        "type TEXT NOT NULL," +
+        "created_at TEXT NOT NULL," +
+        "created_by INTEGER NOT NULL," +
+        "FOREIGN KEY(created_by) REFERENCES Users(id) ON DELETE CASCADE" +
+        ")";
+    sqLiteDatabase.execSQL(createChatRoomsTable);
+    Log.d(TAG, "ChatRooms table created");
+
+    // ChatRoomMembers 表（聊天室成員表）
+    String createChatRoomMembersTable = "CREATE TABLE IF NOT EXISTS ChatRoomMembers (" +
+        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+        "chatroom_id INTEGER NOT NULL," +
+        "user_id INTEGER NOT NULL," +
+        "joined_at TEXT NOT NULL," +
+        "UNIQUE(chatroom_id, user_id)," +
+        "FOREIGN KEY(chatroom_id) REFERENCES ChatRooms(id) ON DELETE CASCADE," +
+        "FOREIGN KEY(user_id) REFERENCES Users(id) ON DELETE CASCADE" +
+        ")";
+    sqLiteDatabase.execSQL(createChatRoomMembersTable);
+    Log.d(TAG, "ChatRoomMembers table created");
+
+    // Messages 表（訊息表）
+    String createMessagesTable = "CREATE TABLE IF NOT EXISTS Messages (" +
+        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+        "chatroom_id INTEGER NOT NULL," +
+        "sender_id INTEGER NOT NULL," +
+        "content TEXT NOT NULL," +
+        "created_at TEXT NOT NULL," +
+        "FOREIGN KEY(chatroom_id) REFERENCES ChatRooms(id) ON DELETE CASCADE," +
+        "FOREIGN KEY(sender_id) REFERENCES Users(id) ON DELETE CASCADE" +
+        ")";
+    sqLiteDatabase.execSQL(createMessagesTable);
+    Log.d(TAG, "Messages table created");
+
     Log.d(TAG, "Database creation completed successfully");
   }
 
@@ -126,6 +164,9 @@ public class SqlDataBaseHelper extends SQLiteOpenHelper {
 
     try {
       // 刪除表格
+      sqLiteDatabase.execSQL("DROP TABLE IF EXISTS Messages");
+      sqLiteDatabase.execSQL("DROP TABLE IF EXISTS ChatRoomMembers");
+      sqLiteDatabase.execSQL("DROP TABLE IF EXISTS ChatRooms");
       sqLiteDatabase.execSQL("DROP TABLE IF EXISTS UserIssue");
       sqLiteDatabase.execSQL("DROP TABLE IF EXISTS UserProject");
       sqLiteDatabase.execSQL("DROP TABLE IF EXISTS Friends");

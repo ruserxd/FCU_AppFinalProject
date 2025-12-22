@@ -26,6 +26,7 @@ import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import fcu.app.appclassfinalproject.ChatRoomListActivity;
 import fcu.app.appclassfinalproject.ExportExcel;
 import fcu.app.appclassfinalproject.LoginActivity;
 import fcu.app.appclassfinalproject.R;
@@ -43,7 +44,7 @@ public class SettingsFragment extends Fragment {
   private static final String ARG_PARAM1 = "param1";
   private static final String ARG_PARAM2 = "param2";
   private static final String TAG = "SettingsFragment";
-  private Button btn_logout, btn_userFriend, btn_add_friend, btn_export_excel, btnChangeLanguage, btnProjectNumber, btnGithub, btn_del_account;
+  private Button btn_logout, btn_userFriend, btn_add_friend, btn_export_excel, btnChangeLanguage, btnProjectNumber, btnGithub, btn_del_account, btn_chatrooms;
   private SQLiteDatabase db;
 
   private SqlDataBaseHelper sqlDataBaseHelper;
@@ -97,6 +98,7 @@ public class SettingsFragment extends Fragment {
     btnProjectNumber.setText(getString(R.string.setting_countporject, getCurrentProjectCount()));
     btnGithub = view.findViewById(R.id.btn_github);
     btn_del_account = view.findViewById(R.id.btn_delAccount);
+    btn_chatrooms = view.findViewById(R.id.btn_chatrooms);
   }
 
   private void setupClickListeners() {
@@ -120,6 +122,12 @@ public class SettingsFragment extends Fragment {
 
     // 刪除帳號
     btn_del_account.setOnClickListener(v -> showDeleteAccountConfirmDialog());
+
+    // 聊天室
+    btn_chatrooms.setOnClickListener(v -> {
+      Intent intent = new Intent(requireActivity(), ChatRoomListActivity.class);
+      startActivity(intent);
+    });
   }
 
   private void logout() {

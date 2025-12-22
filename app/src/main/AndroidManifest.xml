@@ -36,6 +36,15 @@
       android:exported="false"
       android:name=".RegisterActivity" />
     <activity
+      android:exported="false"
+      android:name=".ChatRoomListActivity" />
+    <activity
+      android:exported="false"
+      android:name=".ChatActivity" />
+    <activity
+      android:exported="false"
+      android:name=".CreateGroupActivity" />
+    <activity
       android:exported="true"
       android:name=".LoginActivity">
       <intent-filter>
