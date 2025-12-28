@@ -45,6 +45,11 @@ dependencies {
 
     implementation libs.poi
     implementation libs.poi.ooxml
+    
+    // Supabase dependencies (using REST API approach for Java)
+    implementation libs.okhttp
+    implementation libs.gson
+    implementation libs.websocket
 
     // Supabase
     implementation platform('io.github.jan-tennert.supabase:bom:2.0.0')

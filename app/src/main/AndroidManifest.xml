@@ -19,6 +19,9 @@
       android:name=".userfriend" />
     <activity
       android:exported="false"
+      android:name=".ChatActivity" />
+    <activity
+      android:exported="false"
       android:name=".GanttActivity" />
     <activity
       android:exported="false"
