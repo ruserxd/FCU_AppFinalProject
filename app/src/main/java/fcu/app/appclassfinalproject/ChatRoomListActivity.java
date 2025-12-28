@@ -2,12 +2,9 @@ package fcu.app.appclassfinalproject;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
-import android.view.View;
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -19,9 +16,9 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import fcu.app.appclassfinalproject.adapter.ChatRoomAdapter;
-import fcu.app.appclassfinalproject.helper.ChatHelper;
-import fcu.app.appclassfinalproject.helper.SqlDataBaseHelper;
+import fcu.app.appclassfinalproject.helper.SupabaseProjectHelper;
 import fcu.app.appclassfinalproject.model.ChatRoom;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ChatRoomListActivity extends AppCompatActivity {
@@ -30,9 +27,8 @@ public class ChatRoomListActivity extends AppCompatActivity {
   private RecyclerView rvChatRooms;
   private ChatRoomAdapter adapter;
   private List<ChatRoom> chatRoomList;
-  private SqlDataBaseHelper dbHelper;
-  private SQLiteDatabase db;
-  private int currentUserId;
+  private String currentUserId;
+  private SupabaseProjectHelper supabaseProjectHelper;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -54,8 +50,8 @@ public class ChatRoomListActivity extends AppCompatActivity {
     }
 
     // 初始化
+    supabaseProjectHelper = new SupabaseProjectHelper();
     loadCurrentUserInfo();
-    initializeDatabase();
     initializeViews();
     loadChatRooms();
 
@@ -75,61 +71,47 @@ public class ChatRoomListActivity extends AppCompatActivity {
   }
 
   private void loadCurrentUserInfo() {
-    SharedPreferences prefs = getSharedPreferences("FCUPrefs", MODE_PRIVATE);
-    currentUserId = prefs.getInt("user_id", -1);
-
-    if (currentUserId == -1) {
-      // 嘗試通過 email 獲取 user_id
-      String email = prefs.getString("email", "");
-      if (!email.isEmpty()) {
-        currentUserId = getUserIdByEmail(email);
-        if (currentUserId != -1) {
-          SharedPreferences.Editor editor = prefs.edit();
-          editor.putInt("user_id", currentUserId);
-          editor.apply();
-        }
-      }
+    supabaseProjectHelper = new SupabaseProjectHelper();
+    currentUserId = supabaseProjectHelper.getCurrentUserId();
+    if (currentUserId == null) {
+      Log.e(TAG, "無法獲取當前用戶 ID");
+    } else {
+      Log.d(TAG, "當前用戶 ID: " + currentUserId);
     }
-  }
-
-  private int getUserIdByEmail(String email) {
-    SqlDataBaseHelper helper = new SqlDataBaseHelper(this);
-    try (SQLiteDatabase database = helper.getReadableDatabase();
-        Cursor cursor = database.rawQuery("SELECT id FROM Users WHERE email = ?",
-            new String[]{email})) {
-
-      if (cursor.moveToFirst()) {
-        return cursor.getInt(0);
-      }
-    } catch (Exception e) {
-      Log.e(TAG, "Error getting user ID by email: " + e.getMessage());
-    }
-    return -1;
-  }
-
-  private void initializeDatabase() {
-    dbHelper = new SqlDataBaseHelper(this);
-    db = dbHelper.getReadableDatabase();
   }
 
   private void initializeViews() {
     rvChatRooms = findViewById(R.id.rv_chatrooms);
     rvChatRooms.setLayoutManager(new LinearLayoutManager(this));
+    if (chatRoomList == null) {
+      chatRoomList = new ArrayList<>();
+    }
     adapter = new ChatRoomAdapter(this, chatRoomList);
     rvChatRooms.setAdapter(adapter);
   }
 
   private void loadChatRooms() {
-    if (currentUserId == -1) {
+    if (currentUserId == null) {
       Log.e(TAG, "無法獲取用戶 ID");
       return;
     }
 
-    chatRoomList = ChatHelper.getChatRoomsByUser(db, currentUserId);
-    if (adapter != null) {
-      adapter.updateChatRoomList(chatRoomList);
-    }
-    Log.d(TAG, "載入聊天室列表，數量: " + (chatRoomList != null ? chatRoomList.size() : 0));
+    new Thread(() -> {
+      try {
+        chatRoomList = supabaseProjectHelper.getChatRoomsByUser(currentUserId);
+        runOnUiThread(() -> {
+          if (adapter != null) {
+            adapter.updateChatRoomList(chatRoomList);
+          }
+          Log.d(TAG, "載入聊天室列表，數量: " + (chatRoomList != null ? chatRoomList.size() : 0));
+        });
+      } catch (Exception e) {
+        Log.e(TAG, "載入聊天室列表失敗: " + e.getMessage(), e);
+        runOnUiThread(() -> {
+          android.widget.Toast.makeText(this, "載入聊天室列表失敗", android.widget.Toast.LENGTH_SHORT).show();
+        });
+      }
+    }).start();
   }
 
   @Override
@@ -144,9 +126,6 @@ public class ChatRoomListActivity extends AppCompatActivity {
   @Override
   protected void onDestroy() {
     super.onDestroy();
-    if (db != null) {
-      db.close();
-    }
   }
 }
 

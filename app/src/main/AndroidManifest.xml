@@ -45,6 +45,9 @@
       android:exported="false"
       android:name=".CreateGroupActivity" />
     <activity
+      android:exported="false"
+      android:name=".WhiteboardActivity" />
+    <activity
       android:exported="true"
       android:name=".LoginActivity">
       <intent-filter>

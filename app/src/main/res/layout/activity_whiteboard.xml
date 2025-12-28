@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background_light"
-    tools:context=".ChatActivity">
+    tools:context=".WhiteboardActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar"
@@ -26,19 +26,17 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_messages"
+    <fcu.app.appclassfinalproject.view.WhiteboardView
+        android:id="@+id/whiteboard_view"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:padding="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/ll_input_container"
+        app:layout_constraintBottom_toTopOf="@+id/ll_toolbar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/app_bar"
-        tools:listitem="@layout/item_message_sent" />
+        app:layout_constraintTop_toBottomOf="@+id/app_bar" />
 
     <LinearLayout
-        android:id="@+id/ll_input_container"
+        android:id="@+id/ll_toolbar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -49,36 +47,33 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <EditText
-            android:id="@+id/et_message_input"
+        <Button
+            android:id="@+id/btn_clear"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="輸入訊息..."
-            android:inputType="textMultiLine"
-            android:maxLines="3"
-            android:minHeight="48dp"
-            android:padding="12dp"
-            android:background="@drawable/borderline"
-            android:textSize="16sp" />
+            android:layout_marginEnd="4dp"
+            android:text="清除"
+            android:minHeight="48dp" />
 
         <Button
-            android:id="@+id/btn_send"
-            android:layout_width="wrap_content"
+            android:id="@+id/btn_color"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="發送"
-            android:minHeight="48dp"
-            android:minWidth="80dp" />
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:text="顏色"
+            android:minHeight="48dp" />
 
         <Button
-            android:id="@+id/btn_whiteboard"
-            android:layout_width="wrap_content"
+            android:id="@+id/btn_undo"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="白板"
-            android:minHeight="48dp"
-            android:minWidth="80dp" />
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:text="撤銷"
+            android:minHeight="48dp" />
 
     </LinearLayout>
 

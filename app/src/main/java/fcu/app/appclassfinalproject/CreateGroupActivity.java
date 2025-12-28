@@ -2,8 +2,6 @@ package fcu.app.appclassfinalproject;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
@@ -21,8 +19,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import fcu.app.appclassfinalproject.adapter.FriendAdapter;
-import fcu.app.appclassfinalproject.helper.ChatHelper;
-import fcu.app.appclassfinalproject.helper.SqlDataBaseHelper;
+import fcu.app.appclassfinalproject.helper.SupabaseProjectHelper;
 import fcu.app.appclassfinalproject.model.User;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,9 +31,8 @@ public class CreateGroupActivity extends AppCompatActivity {
   private RecyclerView rvSelectedMembers;
   private RecyclerView rvAvailableMembers;
   private Button btnCreateGroup;
-  private SqlDataBaseHelper dbHelper;
-  private SQLiteDatabase db;
-  private int currentUserId;
+  private SupabaseProjectHelper supabaseProjectHelper;
+  private String currentUserId;
   private List<User> selectedMembers;
   private List<User> availableMembers;
   private FriendAdapter selectedMembersAdapter;
@@ -62,8 +58,8 @@ public class CreateGroupActivity extends AppCompatActivity {
     }
 
     // 初始化
+    supabaseProjectHelper = new SupabaseProjectHelper();
     loadCurrentUserInfo();
-    initializeDatabase();
     initializeViews();
     loadAvailableMembers();
 
@@ -72,40 +68,12 @@ public class CreateGroupActivity extends AppCompatActivity {
   }
 
   private void loadCurrentUserInfo() {
-    SharedPreferences prefs = getSharedPreferences("FCUPrefs", MODE_PRIVATE);
-    currentUserId = prefs.getInt("user_id", -1);
-
-    if (currentUserId == -1) {
-      String email = prefs.getString("email", "");
-      if (!email.isEmpty()) {
-        currentUserId = getUserIdByEmail(email);
-        if (currentUserId != -1) {
-          SharedPreferences.Editor editor = prefs.edit();
-          editor.putInt("user_id", currentUserId);
-          editor.apply();
-        }
-      }
+    currentUserId = supabaseProjectHelper.getCurrentUserId();
+    if (currentUserId == null) {
+      Log.e(TAG, "無法獲取當前用戶 ID");
+    } else {
+      Log.d(TAG, "當前用戶 ID: " + currentUserId);
     }
-  }
-
-  private int getUserIdByEmail(String email) {
-    SqlDataBaseHelper helper = new SqlDataBaseHelper(this);
-    try (SQLiteDatabase database = helper.getReadableDatabase();
-        Cursor cursor = database.rawQuery("SELECT id FROM Users WHERE email = ?",
-            new String[]{email})) {
-
-      if (cursor.moveToFirst()) {
-        return cursor.getInt(0);
-      }
-    } catch (Exception e) {
-      Log.e(TAG, "Error getting user ID by email: " + e.getMessage());
-    }
-    return -1;
-  }
-
-  private void initializeDatabase() {
-    dbHelper = new SqlDataBaseHelper(this);
-    db = dbHelper.getReadableDatabase();
   }
 
   private void initializeViews() {
@@ -152,39 +120,17 @@ public class CreateGroupActivity extends AppCompatActivity {
   }
 
   private void loadAvailableMembers() {
-    if (currentUserId == -1) {
+    if (currentUserId == null) {
       Log.e(TAG, "無法獲取用戶 ID");
       return;
     }
 
-    try {
-      // 獲取所有好友
-      String query = "SELECT DISTINCT u.id, u.account, u.email " +
-          "FROM Users u " +
-          "INNER JOIN Friends f ON (u.id = f.friend_id AND f.user_id = ?) " +
-          "OR (u.id = f.user_id AND f.friend_id = ?) " +
-          "WHERE u.id != ?";
-
-      Cursor cursor = db.rawQuery(query,
-          new String[]{String.valueOf(currentUserId), String.valueOf(currentUserId),
-              String.valueOf(currentUserId)});
-
-      availableMembers.clear();
-      while (cursor.moveToNext()) {
-        int id = cursor.getInt(0);
-        String account = cursor.getString(1);
-        String email = cursor.getString(2);
-        availableMembers.add(new User(id, account, email));
-      }
-      cursor.close();
-
-      availableMembersAdapter.notifyDataSetChanged();
-      Log.d(TAG, "載入可用成員，數量: " + availableMembers.size());
-
-    } catch (Exception e) {
-      Log.e(TAG, "載入可用成員失敗: " + e.getMessage(), e);
-      Toast.makeText(this, "載入成員列表失敗", Toast.LENGTH_SHORT).show();
-    }
+    // TODO: 從 Supabase 獲取好友列表
+    // 目前先顯示空列表，需要實現好友查詢功能
+    availableMembers.clear();
+    availableMembersAdapter.notifyDataSetChanged();
+    Log.d(TAG, "載入可用成員，數量: " + availableMembers.size());
+    Toast.makeText(this, "好友列表功能待實現", Toast.LENGTH_SHORT).show();
   }
 
   private void createGroup() {
@@ -199,28 +145,39 @@ public class CreateGroupActivity extends AppCompatActivity {
       return;
     }
 
-    if (currentUserId == -1) {
+    if (currentUserId == null) {
       Toast.makeText(this, "用戶資訊錯誤", Toast.LENGTH_SHORT).show();
       return;
     }
 
-    // 收集成員 ID
-    List<Integer> memberIds = new ArrayList<>();
+    // 收集成員 ID（轉換為 String）
+    List<String> memberIds = new ArrayList<>();
     for (User user : selectedMembers) {
-      memberIds.add(user.getID());
+      memberIds.add(String.valueOf(user.getID()));
     }
 
     // 建立群組
-    int chatroomId = ChatHelper.createGroupChatRoom(db, groupName, currentUserId, memberIds);
-    if (chatroomId != -1) {
-      Toast.makeText(this, "群組建立成功", Toast.LENGTH_SHORT).show();
-      // 返回聊天室列表
-      Intent intent = new Intent(this, ChatRoomListActivity.class);
-      startActivity(intent);
-      finish();
-    } else {
-      Toast.makeText(this, "建立群組失敗，請重試", Toast.LENGTH_SHORT).show();
-    }
+    new Thread(() -> {
+      try {
+        Integer chatroomId = supabaseProjectHelper.createGroupChatRoom(groupName, currentUserId, memberIds);
+        runOnUiThread(() -> {
+          if (chatroomId != null && chatroomId != -1) {
+            Toast.makeText(CreateGroupActivity.this, "群組建立成功", Toast.LENGTH_SHORT).show();
+            // 返回聊天室列表
+            Intent intent = new Intent(CreateGroupActivity.this, ChatRoomListActivity.class);
+            startActivity(intent);
+            finish();
+          } else {
+            Toast.makeText(CreateGroupActivity.this, "建立群組失敗，請重試", Toast.LENGTH_SHORT).show();
+          }
+        });
+      } catch (Exception e) {
+        Log.e(TAG, "建立群組失敗: " + e.getMessage(), e);
+        runOnUiThread(() -> {
+          Toast.makeText(CreateGroupActivity.this, "建立群組失敗: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        });
+      }
+    }).start();
   }
 
   @Override
@@ -235,9 +192,6 @@ public class CreateGroupActivity extends AppCompatActivity {
   @Override
   protected void onDestroy() {
     super.onDestroy();
-    if (db != null) {
-      db.close();
-    }
   }
 }
 

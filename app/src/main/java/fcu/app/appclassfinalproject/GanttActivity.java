@@ -2,8 +2,6 @@ package fcu.app.appclassfinalproject;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -19,7 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import fcu.app.appclassfinalproject.adapter.IssueMonthAdapter;
 import fcu.app.appclassfinalproject.adapter.IssueNameAdapter;
-import fcu.app.appclassfinalproject.helper.SqlDataBaseHelper;
+import fcu.app.appclassfinalproject.helper.SupabaseProjectHelper;
 import fcu.app.appclassfinalproject.model.IssueMonth;
 import fcu.app.appclassfinalproject.model.IssueName;
 import java.text.SimpleDateFormat;
@@ -64,41 +62,8 @@ public class GanttActivity extends AppCompatActivity {
     int project_id = prefs.getInt("project_id", 0);
     String today = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
     tvToday.setText(today);
-    SqlDataBaseHelper sqlDataBaseHelper = new SqlDataBaseHelper(GanttActivity.this);
-    SQLiteDatabase db = sqlDataBaseHelper.getReadableDatabase();
-    Cursor cursor = null;
-    Cursor issueCursor = null;
-
-    cursor = db.rawQuery("SELECT * FROM Projects WHERE id = ?",
-        new String[]{String.valueOf(project_id)});
-    if (cursor.moveToFirst()) {
-      String projectName = cursor.getString(cursor.getColumnIndexOrThrow("name"));
-      tvIssueName.setText(projectName);
-    } else {
-      tvIssueName.setText("找不到項目");
-      Log.e("ProjectInfoFragment", "找不到 ID 為 " + project_id + " 的項目");
-    }
-
-    issueCursor = db.rawQuery("SELECT * FROM Issues WHERE project_id = ?",
-        new String[]{String.valueOf(project_id)});
-    if (issueCursor.moveToFirst()) {
-      do {
-        String name = issueCursor.getString(issueCursor.getColumnIndexOrThrow("name"));
-        String summary = issueCursor.getString(issueCursor.getColumnIndexOrThrow("summary"));
-        String start_time = issueCursor.getString(issueCursor.getColumnIndexOrThrow("start_time"));
-        String end_time = issueCursor.getString(issueCursor.getColumnIndexOrThrow("end_time"));
-        String status = issueCursor.getString(issueCursor.getColumnIndexOrThrow("status"));
-
-        issueNameList.add(new IssueName(name));
-        issueMonthList.add(new IssueMonth(start_time, end_time, status));
-      } while (issueCursor.moveToNext());
-    } else {
-      Toast.makeText(GanttActivity.this, "此專案沒有任何問題", Toast.LENGTH_SHORT).show();
-    }
-    issueNameAdapter = new IssueNameAdapter(GanttActivity.this, issueNameList);
-    issueRecyclerView.setAdapter(issueNameAdapter);
-    issueMonthAdapter = new IssueMonthAdapter(GanttActivity.this, issueMonthList);
-    monthRecyclerView.setAdapter(issueMonthAdapter);
+    SupabaseProjectHelper supabaseProjectHelper = new SupabaseProjectHelper();
+    // TODO: Get project and issues from Supabase
 
     btnBackToIssueList.setOnClickListener(new View.OnClickListener() {
       @Override

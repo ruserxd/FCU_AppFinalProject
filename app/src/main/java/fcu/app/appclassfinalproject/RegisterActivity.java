@@ -18,12 +18,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
+import fcu.app.appclassfinalproject.supabase.AuthHelper;
 
 public class RegisterActivity extends AppCompatActivity {
 
@@ -34,7 +29,6 @@ public class RegisterActivity extends AppCompatActivity {
   private Button btn_register;
   private TextView tv_to_login;
 
-  FirebaseAuth mAuth;
   private static final String TAG = "RegisterActivity";
 
   @Override
@@ -55,8 +49,6 @@ public class RegisterActivity extends AppCompatActivity {
     btn_register = findViewById(R.id.btn_register);
     tv_to_login = findViewById(R.id.tv_to_register);
 
-    FirebaseApp.initializeApp(this);
-    mAuth = FirebaseAuth.getInstance();
 
     // 設定註冊按鈕
     setupRegisterButton();
@@ -135,60 +127,47 @@ public class RegisterActivity extends AppCompatActivity {
     btn_register.setEnabled(false);
     Toast.makeText(this, getString(R.string.register_registering), Toast.LENGTH_SHORT).show();
 
-    mAuth.createUserWithEmailAndPassword(email, password)
-        .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-          @Override
-          public void onComplete(@NonNull Task<AuthResult> task) {
-            btn_register.setEnabled(true);
+    new Thread(() -> {
+      var result = AuthHelper.INSTANCE.signUpWithEmail(email, password, account);
+      runOnUiThread(() -> {
+        btn_register.setEnabled(true);
 
-            if (task.isSuccessful()) {
-              // 註冊成功
-              FirebaseUser user = mAuth.getCurrentUser();
-              if (user != null) {
-                Log.d(TAG, "Firebase 註冊成功: " + user.getEmail());
-
-                // 同步到本地數據庫
-                int localUserId = UserSyncHelper.syncFirebaseUserWithLocalDB(
-                    RegisterActivity.this,
-                    user.getUid(),
-                    user.getEmail(),
-                    account
-                );
-
-                if (localUserId != -1) {
-                  // 保存登入狀態
-                  saveUserToSharedPreferences(email, user.getUid(), localUserId, account);
-
-                  Toast.makeText(RegisterActivity.this,
-                      getString(R.string.register_success), Toast.LENGTH_SHORT).show();
-                  intentTo(HomeActivity.class);
-                } else {
-                  Toast.makeText(RegisterActivity.this,
-                      getString(R.string.register_sync_failed), Toast.LENGTH_LONG).show();
-                  mAuth.signOut();
-                  intentTo(LoginActivity.class);
-                }
-              }
-            } else {
-              // 註冊失敗，處理錯誤訊息
-              handleRegistrationError(task);
-            }
+        if (result.isSuccess()) {
+          // 註冊成功
+          Log.d(TAG, "Supabase 註冊成功: " + email);
+          
+          // 保存登入狀態
+          String userId = AuthHelper.INSTANCE.getCurrentUserId();
+          if (userId != null) {
+            saveUserToSharedPreferences(email, userId, account);
+            Toast.makeText(RegisterActivity.this,
+                getString(R.string.register_success), Toast.LENGTH_SHORT).show();
+            intentTo(HomeActivity.class);
+          } else {
+            Toast.makeText(RegisterActivity.this,
+                getString(R.string.register_sync_failed), Toast.LENGTH_LONG).show();
+            intentTo(LoginActivity.class);
           }
-        });
+        } else {
+          // 註冊失敗，處理錯誤訊息
+          handleRegistrationError(result.getExceptionOrNull());
+        }
+      });
+    }).start();
   }
 
   // 處理註冊錯誤
-  private void handleRegistrationError(Task<AuthResult> task) {
+  private void handleRegistrationError(Exception exception) {
     String errorMessage = getString(R.string.register_failed);
 
-    if (task.getException() != null) {
-      String error = task.getException().getMessage();
+    if (exception != null) {
+      String error = exception.getMessage();
       if (error != null) {
-        if (error.contains("email address is already in use")) {
+        if (error.contains("already registered") || error.contains("already exists")) {
           errorMessage = getString(R.string.register_email_already_used);
-        } else if (error.contains("badly formatted")) {
+        } else if (error.contains("badly formatted") || error.contains("invalid")) {
           errorMessage = getString(R.string.register_email_badly_formatted);
-        } else if (error.contains("weak password")) {
+        } else if (error.contains("weak password") || error.contains("password")) {
           errorMessage = getString(R.string.register_weak_password);
         } else if (error.contains("network")) {
           errorMessage = getString(R.string.register_network_error);
@@ -196,18 +175,16 @@ public class RegisterActivity extends AppCompatActivity {
       }
     }
 
-    Log.w(TAG, "註冊失敗", task.getException());
+    Log.w(TAG, "註冊失敗", exception);
     Toast.makeText(RegisterActivity.this, errorMessage, Toast.LENGTH_LONG).show();
   }
 
   // 儲存用戶資料到 SharedPreferences
-  private void saveUserToSharedPreferences(String email, String firebaseUid, int localUserId,
-      String account) {
+  private void saveUserToSharedPreferences(String email, String userId, String account) {
     SharedPreferences prefs = getSharedPreferences("FCUPrefs", MODE_PRIVATE);
     SharedPreferences.Editor editor = prefs.edit();
     editor.putString("email", email);
-    editor.putString("uid", firebaseUid);
-    editor.putInt("user_id", localUserId);
+    editor.putString("uid", userId);
     editor.putString("user_account", account);
     editor.putString("user_email", email);
     editor.apply();

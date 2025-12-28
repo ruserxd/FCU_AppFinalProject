@@ -11,17 +11,11 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
+import fcu.app.appclassfinalproject.supabase.AuthHelper;
 import java.util.Locale;
 
 public class LoginActivity extends AppCompatActivity {
@@ -29,11 +23,8 @@ public class LoginActivity extends AppCompatActivity {
   // 元件
   private EditText et_login_email;
   private EditText et_login_password;
-  private Button btn_login, btn_translate;
+  private Button btn_login, btn_translate, btn_google_login;
   private TextView tv_to_register;
-
-  // Firebase
-  private FirebaseAuth mAuth;
 
   private SharedPreferences prefs;
   private static final String TAG = "LoginActivity";
@@ -53,21 +44,13 @@ public class LoginActivity extends AppCompatActivity {
       return insets;
     });
 
-    // 初始化 Firebase Auth
-    FirebaseApp.initializeApp(this);
-    mAuth = FirebaseAuth.getInstance();
-
     // 找尋對應 id
     et_login_email = findViewById(R.id.et_login_email);
     et_login_password = findViewById(R.id.et_login_password);
     btn_login = findViewById(R.id.btn_login);
     tv_to_register = findViewById(R.id.tv_to_register);
     btn_translate = findViewById(R.id.btn_translate);
-
-    // 在 home 按下返回鍵，firebase的使用者確定有登入過，不會回到此頁面
-    if (mAuth.getCurrentUser() != null) {
-      intentTo(HomeActivity.class);
-    }
+    btn_google_login = findViewById(R.id.btn_google_login);
 
     // 當按下 "尚未註冊" 文字時
     tv_to_register.setOnClickListener(new View.OnClickListener() {
@@ -85,6 +68,14 @@ public class LoginActivity extends AppCompatActivity {
       }
     });
 
+    // Gmail 登入按鈕
+    btn_google_login.setOnClickListener(new View.OnClickListener() {
+      @Override
+      public void onClick(View view) {
+        signInWithGoogle();
+      }
+    });
+
     // 登入檢測
     btn_login.setOnClickListener(new View.OnClickListener() {
       @Override
@@ -99,60 +90,31 @@ public class LoginActivity extends AppCompatActivity {
           return;
         }
 
-        // 使用 Firebase 進行登入
-        mAuth.signInWithEmailAndPassword(email, password)
-            .addOnCompleteListener(LoginActivity.this, new OnCompleteListener<AuthResult>() {
-              @Override
-              public void onComplete(@NonNull Task<AuthResult> task) {
-                if (task.isSuccessful()) {
-                  // 登入成功
-                  Log.d(TAG, "signInWithEmail:success");
-                  FirebaseUser user = mAuth.getCurrentUser();
-
-                  // 同步 Firebase 用戶與本地數據庫
-                  int localUserId = UserSyncHelper.syncFirebaseUserWithLocalDB(
-                      LoginActivity.this,
-                      user.getUid(),
-                      user.getEmail(),
-                      null
-                  );
-
-                  // 存入登入狀態
-                  prefs = getSharedPreferences("FCUPrefs", MODE_PRIVATE);
-                  SharedPreferences.Editor editor = prefs.edit();
-                  editor.putString("email", email);
-                  editor.putString("uid", user.getUid());
-                  editor.putInt("user_id", localUserId);
-                  editor.apply();
-
-                  Toast.makeText(LoginActivity.this, getString(R.string.login_success),
-                      Toast.LENGTH_SHORT).show();
-
-                  // 切換至主頁面
-                  intentTo(HomeActivity.class);
-                  finish();
-                } else {
-                  // 登入失敗
-                  String errorMessage = getString(R.string.login_failed);
-                  Log.w(TAG, "signInWithEmail:failure", task.getException());
-                  if (task.getException() != null) {
-
-                    String error = task.getException().getMessage();
-                    if (error != null) {
-                      if (error.contains("password is invalid")) {
-                        errorMessage = getString(R.string.password_incorrect);
-                      } else if (error.contains("no user record")) {
-                        errorMessage = getString(R.string.email_not_registered);
-                      } else if (error.contains("badly formatted")) {
-                        errorMessage = getString(R.string.email_format_incorrect);
-                      }
-                    }
+        // 使用 Supabase 進行登入
+        new Thread(() -> {
+          var result = AuthHelper.INSTANCE.signInWithEmail(email, password);
+          runOnUiThread(() -> {
+            if (result.isSuccess()) {
+              Toast.makeText(LoginActivity.this, getString(R.string.login_success),
+                  Toast.LENGTH_SHORT).show();
+              intentTo(HomeActivity.class);
+              finish();
+            } else {
+              String errorMessage = getString(R.string.login_failed);
+              if (result.getExceptionOrNull() != null) {
+                String error = result.getExceptionOrNull().getMessage();
+                if (error != null) {
+                  if (error.contains("Invalid login credentials")) {
+                    errorMessage = getString(R.string.password_incorrect);
+                  } else if (error.contains("Email not confirmed")) {
+                    errorMessage = "請先驗證您的電子郵件";
                   }
-
-                  Toast.makeText(LoginActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
                 }
               }
-            });
+              Toast.makeText(LoginActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
+            }
+          });
+        }).start();
       }
     });
   }
@@ -161,29 +123,26 @@ public class LoginActivity extends AppCompatActivity {
   protected void onStart() {
     super.onStart();
     // 檢查用戶是否已經登入
-    FirebaseUser currentUser = mAuth.getCurrentUser();
-    if (currentUser != null) {
-      // 用戶已登入，直接進入主頁面
-      prefs = getSharedPreferences("FCUPrefs", MODE_PRIVATE);
-      SharedPreferences.Editor editor = prefs.edit();
-      editor.putString("email", currentUser.getEmail());
-      editor.putString("uid", currentUser.getUid());
-      editor.apply();
-
-      intentTo(HomeActivity.class);
-    }
+    new Thread(() -> {
+      if (AuthHelper.INSTANCE.isLoggedIn()) {
+        runOnUiThread(() -> {
+          intentTo(HomeActivity.class);
+        });
+      }
+    }).start();
   }
 
   @Override
   protected void onResume() {
     super.onResume();
-
-    // 檢查 Firebase 用戶是否登入
-    FirebaseUser currentUser = mAuth.getCurrentUser();
-    if (currentUser != null) {
-      // 用戶已登入，直接進入主頁面
-      intentTo(HomeActivity.class);
-    }
+    // 檢查用戶是否已經登入
+    new Thread(() -> {
+      if (AuthHelper.INSTANCE.isLoggedIn()) {
+        runOnUiThread(() -> {
+          intentTo(HomeActivity.class);
+        });
+      }
+    }).start();
   }
 
   // 切換至 "指定" 頁面
@@ -221,5 +180,31 @@ public class LoginActivity extends AppCompatActivity {
 
     // 重新啟動 Activity 以套用新語言
     recreate();
+  }
+
+  // Gmail 登入
+  private void signInWithGoogle() {
+    btn_google_login.setEnabled(false);
+    Toast.makeText(this, "正在使用 Gmail 登入...", Toast.LENGTH_SHORT).show();
+
+    new Thread(() -> {
+      var result = AuthHelper.INSTANCE.signInWithGoogle();
+      runOnUiThread(() -> {
+        btn_google_login.setEnabled(true);
+        if (result.isSuccess()) {
+          String url = result.getOrNull();
+          if (url != null) {
+            // 打開瀏覽器進行 OAuth 認證
+            Intent intent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url));
+            startActivity(intent);
+            Toast.makeText(LoginActivity.this, "請在瀏覽器中完成 Gmail 登入", Toast.LENGTH_LONG).show();
+          }
+        } else {
+          Toast.makeText(LoginActivity.this, "Gmail 登入失敗: " + 
+              (result.getExceptionOrNull() != null ? result.getExceptionOrNull().getMessage() : "未知錯誤"),
+              Toast.LENGTH_SHORT).show();
+        }
+      });
+    }).start();
   }
 }

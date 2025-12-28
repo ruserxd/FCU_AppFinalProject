@@ -1,11 +1,9 @@
 package fcu.app.appclassfinalproject;
 
 import android.content.SharedPreferences;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -19,9 +17,9 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import fcu.app.appclassfinalproject.adapter.MessageAdapter;
-import fcu.app.appclassfinalproject.helper.ChatHelper;
-import fcu.app.appclassfinalproject.helper.SqlDataBaseHelper;
+import fcu.app.appclassfinalproject.helper.SupabaseProjectHelper;
 import fcu.app.appclassfinalproject.model.Message;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ChatActivity extends AppCompatActivity {
@@ -32,12 +30,11 @@ public class ChatActivity extends AppCompatActivity {
   private Button btnSend;
   private MessageAdapter adapter;
   private List<Message> messageList;
-  private SqlDataBaseHelper dbHelper;
-  private SQLiteDatabase db;
   private int chatroomId;
   private String chatroomName;
   private String chatroomType;
-  private int currentUserId;
+  private String currentUserId;
+  private SupabaseProjectHelper supabaseProjectHelper;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -70,13 +67,22 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     // 初始化
+    supabaseProjectHelper = new SupabaseProjectHelper();
     loadCurrentUserInfo();
-    initializeDatabase();
     initializeViews();
     loadMessages();
 
     // 發送按鈕
     btnSend.setOnClickListener(v -> sendMessage());
+
+    // 白板按鈕
+    Button btnWhiteboard = findViewById(R.id.btn_whiteboard);
+    btnWhiteboard.setOnClickListener(v -> {
+      Intent intent = new Intent(ChatActivity.this, WhiteboardActivity.class);
+      intent.putExtra("chatroom_id", chatroomId);
+      intent.putExtra("chatroom_name", chatroomName);
+      startActivity(intent);
+    });
   }
 
   @Override
@@ -86,13 +92,13 @@ public class ChatActivity extends AppCompatActivity {
   }
 
   private void loadCurrentUserInfo() {
-    SharedPreferences prefs = getSharedPreferences("FCUPrefs", MODE_PRIVATE);
-    currentUserId = prefs.getInt("user_id", -1);
-  }
-
-  private void initializeDatabase() {
-    dbHelper = new SqlDataBaseHelper(this);
-    db = dbHelper.getWritableDatabase();
+    supabaseProjectHelper = new SupabaseProjectHelper();
+    currentUserId = supabaseProjectHelper.getCurrentUserId();
+    if (currentUserId == null) {
+      Log.e(TAG, "無法獲取當前用戶 ID");
+    } else {
+      Log.d(TAG, "當前用戶 ID: " + currentUserId);
+    }
   }
 
   private void initializeViews() {
@@ -101,25 +107,39 @@ public class ChatActivity extends AppCompatActivity {
     btnSend = findViewById(R.id.btn_send);
 
     rvMessages.setLayoutManager(new LinearLayoutManager(this));
+    if (messageList == null) {
+      messageList = new java.util.ArrayList<>();
+    }
     adapter = new MessageAdapter(this, messageList);
     rvMessages.setAdapter(adapter);
   }
 
   private void loadMessages() {
-    if (currentUserId == -1) {
+    if (currentUserId == null) {
       Log.e(TAG, "無法獲取用戶 ID");
       return;
     }
 
-    messageList = ChatHelper.getMessagesByChatRoom(db, chatroomId, currentUserId);
-    if (adapter != null) {
-      adapter.updateMessageList(messageList);
-      // 滾動到底部
-      if (messageList != null && !messageList.isEmpty()) {
-        rvMessages.scrollToPosition(messageList.size() - 1);
+    new Thread(() -> {
+      try {
+        messageList = supabaseProjectHelper.getMessagesByChatRoom(chatroomId, currentUserId);
+        runOnUiThread(() -> {
+          if (adapter != null) {
+            adapter.updateMessageList(messageList);
+            // 滾動到底部
+            if (messageList != null && !messageList.isEmpty()) {
+              rvMessages.scrollToPosition(messageList.size() - 1);
+            }
+          }
+          Log.d(TAG, "載入訊息列表，數量: " + (messageList != null ? messageList.size() : 0));
+        });
+      } catch (Exception e) {
+        Log.e(TAG, "載入訊息列表失敗: " + e.getMessage(), e);
+        runOnUiThread(() -> {
+          Toast.makeText(this, "載入訊息失敗", Toast.LENGTH_SHORT).show();
+        });
       }
-    }
-    Log.d(TAG, "載入訊息列表，數量: " + (messageList != null ? messageList.size() : 0));
+    }).start();
   }
 
   private void sendMessage() {
@@ -129,19 +149,30 @@ public class ChatActivity extends AppCompatActivity {
       return;
     }
 
-    if (currentUserId == -1) {
+    if (currentUserId == null) {
       Toast.makeText(this, "用戶資訊錯誤", Toast.LENGTH_SHORT).show();
       return;
     }
 
-    long messageId = ChatHelper.sendMessage(db, chatroomId, currentUserId, content);
-    if (messageId != -1) {
-      etMessageInput.setText("");
-      loadMessages(); // 重新載入訊息列表
-      Toast.makeText(this, "訊息已發送", Toast.LENGTH_SHORT).show();
-    } else {
-      Toast.makeText(this, "發送失敗，請重試", Toast.LENGTH_SHORT).show();
-    }
+    new Thread(() -> {
+      try {
+        Long messageId = supabaseProjectHelper.sendMessage(chatroomId, currentUserId, content);
+        runOnUiThread(() -> {
+          if (messageId != null && messageId != -1) {
+            etMessageInput.setText("");
+            loadMessages(); // 重新載入訊息列表
+            Toast.makeText(this, "訊息已發送", Toast.LENGTH_SHORT).show();
+          } else {
+            Toast.makeText(this, "發送失敗，請重試", Toast.LENGTH_SHORT).show();
+          }
+        });
+      } catch (Exception e) {
+        Log.e(TAG, "發送訊息失敗: " + e.getMessage(), e);
+        runOnUiThread(() -> {
+          Toast.makeText(this, "發送失敗: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        });
+      }
+    }).start();
   }
 
   @Override
@@ -156,9 +187,6 @@ public class ChatActivity extends AppCompatActivity {
   @Override
   protected void onDestroy() {
     super.onDestroy();
-    if (db != null) {
-      db.close();
-    }
   }
 }
 

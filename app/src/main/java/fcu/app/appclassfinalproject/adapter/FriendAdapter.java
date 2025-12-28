@@ -15,14 +15,12 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import fcu.app.appclassfinalproject.ChatActivity;
 import fcu.app.appclassfinalproject.R;
-import fcu.app.appclassfinalproject.helper.ChatHelper;
-import fcu.app.appclassfinalproject.helper.SqlDataBaseHelper;
+import fcu.app.appclassfinalproject.helper.SupabaseProjectHelper;
 import fcu.app.appclassfinalproject.main_fragments.FriendFragment;
 import fcu.app.appclassfinalproject.model.User;
 import java.util.List;
 import static android.content.Context.MODE_PRIVATE;
 import android.content.SharedPreferences;
-import android.database.sqlite.SQLiteDatabase;
 
 public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.ViewHolder> {
 
@@ -30,10 +28,12 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.ViewHolder
   private List<User> friendList;
   private FriendFragment friendFragment;
   private static final String TAG = "FriendAdapter";
+  private SupabaseProjectHelper supabaseProjectHelper;
 
   public FriendAdapter(Context context, List<User> friendList) {
     this.context = context;
     this.friendList = friendList;
+    this.supabaseProjectHelper = new SupabaseProjectHelper();
     Log.d(TAG, "FriendAdapter 創建，朋友數量: " + friendList.size());
   }
 
@@ -130,35 +130,45 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.ViewHolder
    */
   private void startChatWithFriend(User friend) {
     SharedPreferences prefs = context.getSharedPreferences("FCUPrefs", MODE_PRIVATE);
-    int currentUserId = prefs.getInt("user_id", -1);
+    String currentUserId = supabaseProjectHelper.getCurrentUserId();
 
-    if (currentUserId == -1) {
+    if (currentUserId == null) {
       Toast.makeText(context, "請先登入", Toast.LENGTH_SHORT).show();
       return;
     }
 
-    SqlDataBaseHelper dbHelper = new SqlDataBaseHelper(context);
-    SQLiteDatabase db = dbHelper.getWritableDatabase();
+    // 獲取好友的 Supabase 用戶 ID（需要從 Supabase 獲取）
+    // 這裡假設 friend.getID() 返回的是 Supabase 用戶 ID
+    // 如果實際情況不同，需要根據 email 或其他方式查找
+    String friendId = String.valueOf(friend.getID());
 
-    try {
-      // 建立或獲取一對一聊天室
-      int chatroomId = ChatHelper.createPrivateChatRoom(db, currentUserId, friend.getID());
+    new Thread(() -> {
+      try {
+        Integer chatroomId = supabaseProjectHelper.createPrivateChatRoom(currentUserId, friendId);
 
-      if (chatroomId != -1) {
-        Intent intent = new Intent(context, ChatActivity.class);
-        intent.putExtra("chatroom_id", chatroomId);
-        intent.putExtra("chatroom_name", friend.getAccount());
-        intent.putExtra("chatroom_type", "private");
-        context.startActivity(intent);
-      } else {
-        Toast.makeText(context, "無法建立聊天室", Toast.LENGTH_SHORT).show();
+        if (chatroomId != null && chatroomId != -1) {
+          android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+          handler.post(() -> {
+            Intent intent = new Intent(context, ChatActivity.class);
+            intent.putExtra("chatroom_id", chatroomId);
+            intent.putExtra("chatroom_name", friend.getAccount());
+            intent.putExtra("chatroom_type", "private");
+            context.startActivity(intent);
+          });
+        } else {
+          android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+          handler.post(() -> {
+            Toast.makeText(context, "無法建立聊天室", Toast.LENGTH_SHORT).show();
+          });
+        }
+      } catch (Exception e) {
+        Log.e(TAG, "建立聊天室失敗: " + e.getMessage(), e);
+        android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+        handler.post(() -> {
+          Toast.makeText(context, "建立聊天室失敗", Toast.LENGTH_SHORT).show();
+        });
       }
-    } catch (Exception e) {
-      Log.e(TAG, "建立聊天室失敗: " + e.getMessage(), e);
-      Toast.makeText(context, "建立聊天室失敗", Toast.LENGTH_SHORT).show();
-    } finally {
-      db.close();
-    }
+    }).start();
   }
 
   @Override
