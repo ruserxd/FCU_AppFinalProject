@@ -24,6 +24,7 @@ import fcu.app.appclassfinalproject.ChatRoomListActivity;
 import fcu.app.appclassfinalproject.ExportExcel;
 import fcu.app.appclassfinalproject.LoginActivity;
 import fcu.app.appclassfinalproject.R;
+import fcu.app.appclassfinalproject.helper.SupabaseConfig;
 import fcu.app.appclassfinalproject.supabase.AuthHelper;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -38,7 +39,8 @@ public class SettingsFragment extends Fragment {
   private static final String ARG_PARAM1 = "param1";
   private static final String ARG_PARAM2 = "param2";
   private static final String TAG = "SettingsFragment";
-  private Button btn_logout, btn_userFriend, btn_add_friend, btn_export_excel, btnChangeLanguage, btnProjectNumber, btnGithub, btn_del_account, btn_chatrooms;
+  private Button btn_logout, btn_userFriend, btn_add_friend, btn_export_excel, btnChangeLanguage, btnProjectNumber,
+      btnGithub, btn_del_account, btn_chatrooms;
 
   private String mParam1;
   private String mParam2;
@@ -71,10 +73,25 @@ public class SettingsFragment extends Fragment {
   public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
     super.onViewCreated(view, savedInstanceState);
 
+    // 初始化 Supabase 配置
+    initSupabaseConfig();
+
     initViews(view);
 
     // 設定按鈕點擊事件
     setupClickListeners();
+  }
+
+  /**
+   * 初始化 Supabase 配置
+   */
+  private void initSupabaseConfig() {
+    SupabaseConfig.getInstance(requireContext()).setConfig(
+        "https://xtrfkyhgglcsrutflcsg.supabase.co",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0cmZreWhnZ2xjc3J1dGZsY3NnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4MDM5MjksImV4cCI6MjA4MjM3OTkyOX0.wWTZdSdplfRN-fiksILPJZza3Kkc8F6KG6Iry9ttywM",
+        null // service_key 可選，此處設為 null
+    );
+    Log.d(TAG, "Supabase 配置已初始化");
   }
 
   private void initViews(View view) {
@@ -106,7 +123,7 @@ public class SettingsFragment extends Fragment {
     // 切換語言
     btnChangeLanguage.setOnClickListener(v -> changeLanguageSetting());
 
-    //匯入GitHub專案
+    // 匯入GitHub專案
     btnGithub.setOnClickListener(v -> GithubInsert());
 
     // 刪除帳號
@@ -121,22 +138,28 @@ public class SettingsFragment extends Fragment {
 
   private void logout() {
     new Thread(() -> {
-      var result = AuthHelper.INSTANCE.signOut();
-      requireActivity().runOnUiThread(() -> {
-        if (result.isSuccess()) {
+      // You need to call the suspend function from Java.
+      // Since you created a specific thread, you can block it.
+      try {
+        // Using a helper to run the suspend function
+        kotlinx.coroutines.BuildersKt.runBlocking(
+            kotlinx.coroutines.Dispatchers.getIO(),
+            (scope, continuation) -> AuthHelper.INSTANCE.signOut(continuation));
+
+        // If successful (assuming no exception thrown above)
+        requireActivity().runOnUiThread(() -> {
           getSharedPrefs().edit().clear().apply();
           Log.d(TAG, "用戶已登出");
           showToast(getString(R.string.logout_success));
-          
-          // 回到登入頁面
+
           Intent intent = new Intent(requireActivity(), LoginActivity.class);
           intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
           startActivity(intent);
           requireActivity().finish();
-        } else {
-          showToast("登出失敗: " + (result.getExceptionOrNull() != null ? result.getExceptionOrNull().getMessage() : "未知錯誤"));
-        }
-      });
+        });
+      } catch (Exception e) {
+        requireActivity().runOnUiThread(() -> showToast("登出失敗: " + e.getMessage()));
+      }
     }).start();
   }
 
@@ -291,8 +314,7 @@ public class SettingsFragment extends Fragment {
 
   // 顯示 Toast 訊息
   private void showToast(String message) {
-    requireActivity().runOnUiThread(() ->
-        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show());
+    requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show());
   }
 
   // 顯示刪除帳號確認對話框
@@ -362,12 +384,12 @@ public class SettingsFragment extends Fragment {
     // 1. 驗證密碼
     // 2. 刪除 Supabase 用戶資料
     // 3. 清除本地 SharedPreferences
-    
+
     new Thread(() -> {
       // 暫時實現：清除本地資料並登出
       getSharedPrefs().edit().clear().apply();
       var result = AuthHelper.INSTANCE.signOut();
-      
+
       requireActivity().runOnUiThread(() -> {
         if (result.isSuccess()) {
           showToast(getString(R.string.account_deleted_success));

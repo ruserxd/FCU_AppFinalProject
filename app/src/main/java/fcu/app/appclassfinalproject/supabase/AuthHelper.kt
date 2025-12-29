@@ -80,13 +80,14 @@ object AuthHelper {
      * 登出
      */
     fun signOut(): Result<Unit> {
-        return runBlocking {
-            try {
+        return try {
+            runBlocking {
+                // Change SupabaseClientManager.client to just client
                 client.auth.signOut()
-                Result.success(Unit)
-            } catch (e: Exception) {
-                Result.failure(e)
             }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
