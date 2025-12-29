@@ -2,7 +2,9 @@
 
 ## 專案簡介
 
-這是一個基於 Android 平台的專案管理應用程式，提供完整的專案協作、議題追蹤、甘特圖視覺化等功能。應用程式使用 Supabase 進行身份驗證和雲端資料同步。
+這是一個基於 Android 平台的專案管理應用程式，提供完整的專案協作、議題追蹤、甘特圖視覺化、即時聊天等功能。應用程式使用 Supabase 作為後端服務，提供身份驗證、雲端資料同步和即時通訊功能。
+
+**專案名稱**：逢甲大學 114-1 網路程式設計課程期末專案
 
 ## 主要功能
 
@@ -34,11 +36,17 @@
 - **多工作表**：包含專案列表和每個專案的議題詳情
 - **多語言支援**：根據當前語言設定匯出對應語言的標題
 
+### 6. 即時聊天
+- **專案聊天室**：每個專案都有專屬聊天室
+- **私訊功能**：用戶之間可以發送私訊
+- **群組聊天**：創建和管理群組聊天室
+- **訊息歷史**：保存和載入歷史訊息
+
 ## 技術棧
 
 ### 開發環境
 - **IDE**：Android Studio
-- **語言**：Java 11
+- **語言**：Java 11 / Kotlin
 - **平台**：Android (minSdk 26, targetSdk 35, compileSdk 35)
 - **建置工具**：Gradle 8.8.2
 
@@ -54,7 +62,7 @@
 #### Supabase 服務
 - `io.github.jan-tennert.supabase:bom:2.0.0` - Supabase BOM（統一版本管理）
 - `io.github.jan-tennert.supabase:postgrest-kt` - Supabase PostgREST（資料庫操作）
-- `io.github.jan-tennert.supabase:auth-kt` - Supabase 身份驗證
+- `io.github.jan-tennert.supabase:gotrue-kt` - Supabase 身份驗證
 - `io.github.jan-tennert.supabase:storage-kt` - Supabase 雲端儲存
 - `io.github.jan-tennert.supabase:realtime-kt` - Supabase Realtime（即時同步）
 
@@ -63,6 +71,9 @@
 - `org.apache.poi:poi-ooxml:5.4.0` - Apache POI OOXML（Excel 2007+ 格式支援）
 - `io.ktor:ktor-client-android:2.3.10` - Ktor HTTP 客戶端
 - `org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3` - KotlinX 序列化
+- `com.squareup.okhttp3:okhttp` - HTTP 客戶端（用於 REST API）
+- `com.google.code.gson:gson` - JSON 處理
+- `org.java-websocket:Java-WebSocket` - WebSocket 客戶端
 
 #### 測試框架
 - `junit:junit:4.13.2` - JUnit 單元測試
@@ -116,43 +127,61 @@ dependencies {
 ## 資料庫結構
 
 ### Supabase PostgreSQL 資料庫
-應用程式使用 Supabase 作為後端資料庫服務，所有資料存儲在 Supabase PostgreSQL 資料庫中。
+應用程式使用 **Supabase (PostgreSQL)** 作為主要資料庫，提供以下功能：
+- 雲端資料存儲
+- 身份驗證服務
+- 即時資料同步（Realtime）
+- Row Level Security (RLS) 資料安全
 
-#### 主要表格結構
+#### 主要資料表結構
 
-**1. users（用戶表）**
-- `id` (UUID) - 主鍵
-- `account` (TEXT) - 用戶帳號
-- `email` (TEXT) - 電子郵件
+**1. Users（用戶表）**
+- `id` (SERIAL) - 主鍵，用戶唯一識別碼
+- `account` (TEXT) - 用戶帳號（唯一）
+- `email` (TEXT) - 電子郵件（唯一）
+- `firebase_uid` (TEXT) - Firebase 用戶識別碼（可選，用於遷移）
+- `created_at` (TIMESTAMP) - 創建時間
+- `updated_at` (TIMESTAMP) - 更新時間
 
-**2. projects（專案表）**
-- `id` (INTEGER) - 主鍵
+**2. Projects（專案表）**
+- `id` (SERIAL) - 主鍵，專案唯一識別碼
 - `name` (TEXT) - 專案名稱
-- `summary` (TEXT) - 專案概述
+- `summary` (TEXT) - 專案摘要
+- `created_at` (TIMESTAMP) - 創建時間
+- `updated_at` (TIMESTAMP) - 更新時間
 
-**3. issues（議題表）**
-- `id` (INTEGER) - 主鍵
+**3. Issues（議題表）**
+- `id` (SERIAL) - 主鍵，議題唯一識別碼
 - `name` (TEXT) - 議題名稱
-- `summary` (TEXT) - 議題概述
-- `start_time` (TEXT) - 開始時間
-- `end_time` (TEXT) - 結束時間
-- `status` (TEXT) - 狀態
-- `designee` (TEXT) - 被指派者
-- `project_id` (INTEGER) - 專案 ID
+- `summary` (TEXT) - 議題摘要
+- `start_time` (TEXT) - 開始時間（格式：YYYY-MM-DD）
+- `end_time` (TEXT) - 結束時間（格式：YYYY-MM-DD）
+- `status` (TEXT) - 議題狀態（未開始/進行中/已完成 或 TO-DO/In progress/Finished）
+- `designee` (TEXT) - 被指派者帳號
+- `project_id` (INTEGER) - 所屬專案ID（外鍵）
+- `created_at` (TIMESTAMP) - 創建時間
+- `updated_at` (TIMESTAMP) - 更新時間
 
-**4. chatrooms（聊天室表）**
-- `id` (INTEGER) - 主鍵
-- `name` (TEXT) - 聊天室名稱
-- `type` (TEXT) - 類型（private/group）
-- `created_at` (TEXT) - 建立時間
-- `created_by` (TEXT) - 建立者 ID
+**4. UserProject（用戶專案關聯表）**
+- `user_id` (INTEGER) - 用戶ID（複合主鍵）
+- `project_id` (INTEGER) - 專案ID（複合主鍵）
+- `created_at` (TIMESTAMP) - 關聯創建時間
 
-**5. messages（訊息表）**
-- `id` (INTEGER) - 主鍵
-- `chatroom_id` (INTEGER) - 聊天室 ID
-- `sender_id` (TEXT) - 發送者 ID
-- `content` (TEXT) - 訊息內容
-- `created_at` (TEXT) - 建立時間
+**5. UserIssue（用戶議題關聯表）**
+- `user_id` (INTEGER) - 用戶ID（複合主鍵）
+- `issue_id` (INTEGER) - 議題ID（複合主鍵）
+- `created_at` (TIMESTAMP) - 關聯創建時間
+
+**6. Friends（好友關係表）**
+- `user_id` (INTEGER) - 用戶ID（複合主鍵）
+- `friend_id` (INTEGER) - 好友ID（複合主鍵）
+- `created_at` (TIMESTAMP) - 好友關係創建時間
+
+#### 資料庫視圖與函數
+- **視圖**：`project_details`、`user_projects_view`、`issue_details`
+- **函數**：`get_user_project_count()`、`get_project_member_count()`、`get_project_issue_count()`、`is_user_project_member()`
+
+**詳細的資料庫結構請參考**：[SUPABASE_DATABASE_SCHEMA.sql](SUPABASE_DATABASE_SCHEMA.sql)
 
 ## Supabase API 使用
 
@@ -173,8 +202,12 @@ dependencies {
 - **即時同步**：使用 Supabase Realtime 進行聊天訊息和白板繪圖的即時同步
 
 ### Supabase 配置
-- **配置檔案**：在 `SupabaseManager.kt` 中設定 `SUPABASE_URL` 和 `SUPABASE_KEY`
-- **API Key**：從 Supabase 專案設定中獲取
+- **配置方式一**：在 `SupabaseManager.kt` 中設定 `SUPABASE_URL` 和 `SUPABASE_KEY`
+- **配置方式二**：在 `SupabaseConfig.java` 中設定（推薦，支援動態配置）
+- **配置方式三**：在 `SettingsFragment.java` 中初始化配置
+- **API Key**：從 Supabase 專案設定中獲取（Settings > API）
+
+**詳細的 Supabase 設置步驟請參考**：[SUPABASE_SETUP.md](SUPABASE_SETUP.md)
 
 ## 專案結構
 
@@ -191,12 +224,19 @@ app/
 │   │   │   │   ├── IssueNameAdapter.java
 │   │   │   │   └── ProjectAdapter.java
 │   │   │   ├── helper/               # 輔助類別
-│   │   │   │   ├── ProjectHelper.java      # 專案相關資料庫操作
-│   │   │   │   └── SupabaseProjectHelper.java  # Supabase 資料庫操作
-│   │   │   ├── supabase/             # Supabase 相關
+│   │   │   │   ├── SupabaseConfig.java          # Supabase 配置管理
+│   │   │   │   ├── SupabaseAuthHelper.java      # Supabase 身份驗證
+│   │   │   │   ├── SupabaseDatabaseHelper.java # Supabase 資料庫操作
+│   │   │   │   └── SupabaseProjectHelper.java  # Supabase 專案操作
+│   │   │   ├── supabase/             # Supabase 相關（Kotlin）
 │   │   │   │   ├── SupabaseManager.kt      # Supabase 客戶端管理
 │   │   │   │   ├── AuthHelper.kt           # 身份驗證輔助
 │   │   │   │   └── ChatHelper.kt           # 聊天室輔助
+│   │   │   ├── chat/                 # 聊天功能
+│   │   │   │   ├── ChatClient.java
+│   │   │   │   └── ChatMessage.java
+│   │   │   ├── view/                 # 自訂視圖
+│   │   │   │   └── WhiteboardView.java
 │   │   │   ├── main_fragments/       # 主要 Fragment
 │   │   │   │   ├── AddFragment.java         # 新增專案
 │   │   │   │   ├── AddFriendFragment.java  # 新增好友
@@ -210,7 +250,9 @@ app/
 │   │   │   │   ├── IssueMonth.java
 │   │   │   │   ├── IssueName.java
 │   │   │   │   ├── Project.java
-│   │   │   │   └── User.java
+│   │   │   │   ├── User.java
+│   │   │   │   ├── ChatRoom.java
+│   │   │   │   └── Message.java
 │   │   │   ├── CreateIssueActivity.java    # 建立議題頁面
 │   │   │   ├── EditIssueActivity.java      # 編輯議題頁面
 │   │   │   ├── ExportExcel.java            # Excel 匯出功能
@@ -219,6 +261,10 @@ app/
 │   │   │   ├── LoginActivity.java          # 登入頁面
 │   │   │   ├── ProjectActivity.java        # 專案頁面
 │   │   │   ├── RegisterActivity.java       # 註冊頁面
+│   │   │   ├── ChatActivity.java           # 聊天頁面
+│   │   │   ├── ChatRoomListActivity.java   # 聊天室列表
+│   │   │   ├── CreateGroupActivity.java   # 建立群組
+│   │   │   └── WhiteboardActivity.java     # 白板頁面
 │   │   ├── res/                      # 資源檔案
 │   │   │   ├── layout/               # 佈局檔案
 │   │   │   ├── drawable/             # 圖形資源
@@ -238,7 +284,9 @@ app/
    - compileSdk 35
    - minSdk 26
    - targetSdk 35
-4. **Firebase 專案**：需要有效的 Firebase 專案配置
+4. **Supabase 專案**：需要有效的 Supabase 專案配置
+   - 前往 [Supabase](https://supabase.com) 註冊並創建專案
+   - 獲取 Project URL 和 API Key
 
 ### 安裝步驟
 
@@ -248,9 +296,39 @@ git clone <repository-url>
 cd 114-1_FCU_Network-Programming-Final-Project
 ```
 
-#### 2. 配置 Firebase
-- 確保 `app/google-services.json` 檔案存在且包含正確的 Firebase 專案配置
-- 如果沒有，請從 Firebase Console 下載並替換現有檔案
+#### 2. 配置 Supabase
+
+**步驟 1：創建 Supabase 專案**
+1. 前往 [Supabase](https://supabase.com) 註冊帳號
+2. 創建新專案，記下 Project URL 和 API Key
+
+**步驟 2：設置資料庫結構**
+1. 在 Supabase Dashboard 中，前往 **SQL Editor**
+2. 複製並執行 `SUPABASE_DATABASE_SCHEMA.sql` 檔案中的所有 SQL 語句
+3. 驗證所有表、索引、視圖、函數都已創建成功
+
+**步驟 3：在應用程式中配置 Supabase**
+
+**方法一：在 SettingsFragment 中配置（已預設）**
+- 配置已在 `SettingsFragment.java` 中初始化
+- 如需修改，請編輯 `initSupabaseConfig()` 方法
+
+**方法二：在 SupabaseConfig.java 中配置**
+```java
+private static final String SUPABASE_URL = "https://your-project.supabase.co";
+private static final String SUPABASE_ANON_KEY = "your-anon-key";
+```
+
+**方法三：動態配置**
+```java
+SupabaseConfig.getInstance(context).setConfig(
+    "https://your-project.supabase.co",
+    "your-anon-key",
+    null // service_key 可選
+);
+```
+
+**詳細的 Supabase 設置步驟請參考**：[SUPABASE_SETUP.md](SUPABASE_SETUP.md)
 
 #### 3. 同步 Gradle
 - 開啟 Android Studio
@@ -346,11 +424,19 @@ cd 114-1_FCU_Network-Programming-Final-Project
 - 檔案儲存在 `Documents` 目錄
 
 ### 6. 好友管理
-- 添加好友：透過帳號或電子郵件搜尋並添加
-- 好友列表：顯示所有好友資訊
-- 刪除好友：移除好友關係
+- **添加好友**：透過帳號或電子郵件搜尋並添加
+- **好友列表**：顯示所有好友資訊
+- **刪除好友**：移除好友關係（自動刪除雙向關係）
 
-### 7. 設定功能
+### 7. 即時聊天
+- **專案聊天室**：每個專案都有專屬聊天室，成員可以在其中討論專案相關事宜
+- **私訊功能**：用戶之間可以發送私訊
+- **群組聊天**：創建和管理群組聊天室
+- **訊息歷史**：保存和載入歷史訊息
+
+**聊天伺服器設置請參考**：[CHAT_SERVER_SETUP.md](CHAT_SERVER_SETUP.md)
+
+### 8. 設定功能
 - **語言切換**：中文/英文切換
 - **Excel 匯出**：匯出專案資料
 - **GitHub 匯入**：匯入 GitHub 資料（功能預留）
@@ -371,26 +457,95 @@ cd 114-1_FCU_Network-Programming-Final-Project
   - `uid`：Supabase 用戶 ID
   - `project_id`：當前選中的專案 ID
   - `language`：當前語言設定（"zh" 或 "en"）
+  - `supabase_url`：Supabase URL（可選）
+  - `supabase_anon_key`：Supabase Anon Key（可選）
 
 ### 權限處理
 - 網路權限：用於 Supabase 服務
 - 儲存權限：Excel 匯出功能（Android 10+ 可能不需要）
 
+## 相關文檔
+
+### 📚 核心文檔
+
+- **[PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md)** - 專案完整說明文件
+  - 包含專案概述、技術架構、資料庫設定詳細說明、安裝與配置、API 使用說明等完整資訊
+
+- **[DATABASE_OVERVIEW.md](DATABASE_OVERVIEW.md)** - 資料庫總覽
+  - 資料表結構詳細說明、API 操作總覽、資料流程圖、快速參考範例
+
+- **[SUPABASE_DATABASE_SCHEMA.sql](SUPABASE_DATABASE_SCHEMA.sql)** - 資料庫設置腳本
+  - 完整的 Supabase 資料庫設置 SQL 腳本
+  - 包含所有表、索引、觸發器、RLS 策略、視圖、函數
+
+- **[SUPABASE_DATABASE_API.md](SUPABASE_DATABASE_API.md)** - 資料庫 API 文檔
+  - 所有 `SupabaseDatabaseHelper` 方法的詳細說明
+  - 參數說明、返回值說明、使用範例、錯誤處理
+
+- **[DATABASE_MIGRATION_GUIDE.md](DATABASE_MIGRATION_GUIDE.md)** - 資料庫遷移指南
+  - 從 SQLite 遷移到 Supabase 的完整指南
+  - 代碼遷移範例、資料遷移方法、測試檢查清單
+
+- **[DATABASE_DOCUMENTATION_INDEX.md](DATABASE_DOCUMENTATION_INDEX.md)** - 資料庫文檔索引
+  - 所有資料庫相關文檔的索引和快速參考
+
+### 🔧 設置文檔
+
+- **[SUPABASE_SETUP.md](SUPABASE_SETUP.md)** - Supabase 設置指南
+  - 創建 Supabase 專案、資料庫表結構設置、Gmail OAuth 配置、應用程式配置
+
+- **[CHAT_SERVER_SETUP.md](CHAT_SERVER_SETUP.md)** - 聊天伺服器設置指南
+  - 聊天伺服器設置步驟、使用說明、功能擴展建議、故障排除
+
+### 📋 其他文檔
+
+- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - 實現總結
+  - 已完成的工作、待完成的工作、使用建議、注意事項
+
+- **[TODO.md](TODO.md)** - 待辦事項
+  - 專案待完成的功能和改進項目
+
+---
+
+## 快速開始
+
+### 第一次設置
+
+1. **閱讀設置指南**：[SUPABASE_SETUP.md](SUPABASE_SETUP.md)
+2. **執行資料庫腳本**：[SUPABASE_DATABASE_SCHEMA.sql](SUPABASE_DATABASE_SCHEMA.sql)
+3. **配置應用程式**：在 `SettingsFragment.java` 或 `SupabaseConfig.java` 中設置 Supabase URL 和 API Key
+4. **同步 Gradle**：在 Android Studio 中同步專案
+5. **執行應用程式**：連接裝置或啟動模擬器並運行
+
+### 開發時查閱
+
+- **API 方法**：查閱 [SUPABASE_DATABASE_API.md](SUPABASE_DATABASE_API.md)
+- **資料結構**：查閱 [DATABASE_OVERVIEW.md](DATABASE_OVERVIEW.md)
+- **遷移代碼**：參考 [DATABASE_MIGRATION_GUIDE.md](DATABASE_MIGRATION_GUIDE.md)
+
+---
+
 ## 已知問題與限制
 
-1. **部分功能待實現**：部分功能（如議題管理、專案管理）的 Supabase 整合待完善
-2. **好友列表**：好友列表功能需要從 Supabase 獲取，目前待實現
-3. **離線支援**：應用程式需要網路連線才能使用，所有資料存儲在 Supabase
+1. **離線支援**：應用程式需要網路連線才能使用，所有資料存儲在 Supabase
+2. **RLS 策略**：當前策略較為寬鬆，生產環境可能需要更嚴格的策略
+3. **部分功能**：部分功能（如 GitHub 匯入）仍在開發中
+
+---
 
 ## 版本資訊
 
 - **版本號**：1.0
 - **版本代碼**：1
-- **最後更新**：2024
+- **最後更新**：2025/12/16
+
+---
 
 ## 開發團隊
 
 逢甲大學 114-1 網路程式設計課程 期末專案
+
+---
 
 ## 授權
 
@@ -398,4 +553,4 @@ cd 114-1_FCU_Network-Programming-Final-Project
 
 ---
 
-**注意**：使用本應用程式前，請確保已正確配置 Supabase 專案並在 `SupabaseManager.kt` 中設定正確的 `SUPABASE_URL` 和 `SUPABASE_KEY`。
+**重要提示**：使用本應用程式前，請確保已正確配置 Supabase 專案並在應用程式中設定正確的 `SUPABASE_URL` 和 `SUPABASE_KEY`。詳細的設置步驟請參考 [SUPABASE_SETUP.md](SUPABASE_SETUP.md)。
