@@ -19,6 +19,9 @@
       android:name=".userfriend" />
     <activity
       android:exported="false"
+      android:name=".ChatActivity" />
+    <activity
+      android:exported="false"
       android:name=".GanttActivity" />
     <activity
       android:exported="false"
@@ -35,6 +38,18 @@
     <activity
       android:exported="false"
       android:name=".RegisterActivity" />
+    <activity
+      android:exported="false"
+      android:name=".ChatRoomListActivity" />
+    <activity
+      android:exported="false"
+      android:name=".ChatActivity" />
+    <activity
+      android:exported="false"
+      android:name=".CreateGroupActivity" />
+    <activity
+      android:exported="false"
+      android:name=".WhiteboardActivity" />
     <activity
       android:exported="true"
       android:name=".LoginActivity">

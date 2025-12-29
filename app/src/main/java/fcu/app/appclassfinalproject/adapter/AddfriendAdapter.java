@@ -5,7 +5,6 @@ import static android.content.Context.MODE_PRIVATE;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,7 +15,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import fcu.app.appclassfinalproject.R;
-import fcu.app.appclassfinalproject.helper.SqlDataBaseHelper;
+import fcu.app.appclassfinalproject.helper.SupabaseProjectHelper;
 import fcu.app.appclassfinalproject.model.User;
 import java.util.List;
 
@@ -66,46 +65,7 @@ public class AddfriendAdapter extends RecyclerView.Adapter<AddfriendAdapter.View
   }
 
   private void addFriend(int friendId, int position) {
-    SharedPreferences prefs = context.getSharedPreferences("FCUPrefs", MODE_PRIVATE);
-    int currentUserId = prefs.getInt("user_id", 0);
-
-    if (currentUserId == 0) {
-      Toast.makeText(context, "請先登入", Toast.LENGTH_SHORT).show();
-      return;
-    }
-
-    SqlDataBaseHelper sqlDataBaseHelper = new SqlDataBaseHelper(context);
-
-    try (SQLiteDatabase db = sqlDataBaseHelper.getWritableDatabase()) {
-      // 添加雙向好友關係
-      ContentValues values1 = new ContentValues();
-      values1.put("user_id", currentUserId);
-      values1.put("friend_id", friendId);
-
-      ContentValues values2 = new ContentValues();
-      values2.put("user_id", friendId);
-      values2.put("friend_id", currentUserId);
-
-      long result1 = db.insert("Friends", null, values1);
-      long result2 = db.insert("Friends", null, values2);
-
-      if (result1 != -1 && result2 != -1) {
-        Toast.makeText(context, "成功添加好友！", Toast.LENGTH_SHORT).show();
-
-        // 從列表中移除已添加的用戶
-        userList.remove(position);
-        notifyItemRemoved(position);
-        notifyItemRangeChanged(position, userList.size());
-
-        Log.i("AddFriendAdapter", "成功添加好友 ID: " + friendId);
-      } else {
-        Toast.makeText(context, "添加好友失敗", Toast.LENGTH_SHORT).show();
-        Log.e("AddFriendAdapter", "添加好友失敗");
-      }
-
-    } catch (Exception e) {
-      Toast.makeText(context, "添加好友時發生錯誤: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-    }
+    // TODO: Add friend in Supabase
   }
 
   public static class ViewHolder extends RecyclerView.ViewHolder {

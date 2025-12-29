@@ -2,12 +2,9 @@ package fcu.app.appclassfinalproject;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Environment;
 import android.widget.Toast;
-import fcu.app.appclassfinalproject.helper.ProjectHelper;
-import fcu.app.appclassfinalproject.helper.SqlDataBaseHelper;
+import fcu.app.appclassfinalproject.helper.SupabaseProjectHelper;
 import fcu.app.appclassfinalproject.model.Issue;
 import fcu.app.appclassfinalproject.model.Project;
 import java.io.File;
@@ -28,8 +25,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 public class ExportExcel {
 
   private Context context;
-  private SQLiteDatabase db;
-  private SqlDataBaseHelper dbHelper;
+  private SupabaseProjectHelper supabaseProjectHelper;
   private int currentUserId;
 
   // 字體大小常數 - 超大字體
@@ -37,11 +33,9 @@ public class ExportExcel {
   private static final short PROJECT_INFO_FONT_SIZE = 48; // 專案資訊字體
   private static final short CONTENT_FONT_SIZE = 32; // 內容字體
 
-  public ExportExcel(Context context, SQLiteDatabase database) {
+  public ExportExcel(Context context) {
     this.context = context;
-    this.db = database;
-    dbHelper = new SqlDataBaseHelper(context);
-    db = dbHelper.getReadableDatabase();
+    this.supabaseProjectHelper = new SupabaseProjectHelper();
 
     SharedPreferences prefs = context.getSharedPreferences("FCUPrefs", Context.MODE_PRIVATE);
     currentUserId = prefs.getInt("user_id", -1);
@@ -51,41 +45,16 @@ public class ExportExcel {
    * 獲取當前用戶參與的所有專案
    */
   private List<Project> getAllUserProjects() {
-    List<Project> projects = new ArrayList<>();
-
-    if (currentUserId == -1) {
-      return projects;
-    }
-
-    // 使用 ProjectHelper 獲取用戶參與的所有專案
-    projects = ProjectHelper.getProjectsByUser(db, currentUserId);
-
-    return projects;
+    // TODO: Get all user projects from Supabase
+    return new ArrayList<>();
   }
 
   /**
    * 根據專案ID獲取議題
    */
   private List<Issue> getIssuesByProjectId(int projectId) {
-    List<Issue> issues = new ArrayList<>();
-    String query = "SELECT * FROM Issues WHERE project_id = ? ORDER BY id";
-
-    Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(projectId)});
-    if (cursor.moveToFirst()) {
-      do {
-        Issue issue = new Issue(
-            cursor.getString(1),        // name
-            cursor.getString(2),        // summary
-            cursor.getString(3),        // start time
-            cursor.getString(4),        // end time
-            cursor.getString(5),        // status
-            cursor.getString(6)         // designee
-        );
-        issues.add(issue);
-      } while (cursor.moveToNext());
-    }
-    cursor.close();
-    return issues;
+    // TODO: Get issues by project id from Supabase
+    return new ArrayList<>();
   }
 
   /**

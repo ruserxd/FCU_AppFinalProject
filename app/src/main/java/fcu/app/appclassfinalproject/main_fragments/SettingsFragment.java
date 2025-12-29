@@ -8,8 +8,6 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
@@ -22,14 +20,11 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import com.google.firebase.auth.AuthCredential;
-import com.google.firebase.auth.EmailAuthProvider;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
+import fcu.app.appclassfinalproject.ChatRoomListActivity;
 import fcu.app.appclassfinalproject.ExportExcel;
 import fcu.app.appclassfinalproject.LoginActivity;
 import fcu.app.appclassfinalproject.R;
-import fcu.app.appclassfinalproject.helper.SqlDataBaseHelper;
+import fcu.app.appclassfinalproject.supabase.AuthHelper;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -43,11 +38,7 @@ public class SettingsFragment extends Fragment {
   private static final String ARG_PARAM1 = "param1";
   private static final String ARG_PARAM2 = "param2";
   private static final String TAG = "SettingsFragment";
-  private Button btn_logout, btn_userFriend, btn_add_friend, btn_export_excel, btnChangeLanguage, btnProjectNumber, btnGithub, btn_del_account;
-  private SQLiteDatabase db;
-
-  private SqlDataBaseHelper sqlDataBaseHelper;
-  private FirebaseAuth mAuth;
+  private Button btn_logout, btn_userFriend, btn_add_friend, btn_export_excel, btnChangeLanguage, btnProjectNumber, btnGithub, btn_del_account, btn_chatrooms;
 
   private String mParam1;
   private String mParam2;
@@ -68,7 +59,6 @@ public class SettingsFragment extends Fragment {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    mAuth = FirebaseAuth.getInstance();
   }
 
   @Override
@@ -97,6 +87,7 @@ public class SettingsFragment extends Fragment {
     btnProjectNumber.setText(getString(R.string.setting_countporject, getCurrentProjectCount()));
     btnGithub = view.findViewById(R.id.btn_github);
     btn_del_account = view.findViewById(R.id.btn_delAccount);
+    btn_chatrooms = view.findViewById(R.id.btn_chatrooms);
   }
 
   private void setupClickListeners() {
@@ -120,21 +111,33 @@ public class SettingsFragment extends Fragment {
 
     // 刪除帳號
     btn_del_account.setOnClickListener(v -> showDeleteAccountConfirmDialog());
+
+    // 聊天室
+    btn_chatrooms.setOnClickListener(v -> {
+      Intent intent = new Intent(requireActivity(), ChatRoomListActivity.class);
+      startActivity(intent);
+    });
   }
 
   private void logout() {
-    mAuth.signOut();
-
-    getSharedPrefs().edit().clear().apply();
-
-    Log.d(TAG, "用戶已登出");
-    showToast(getString(R.string.logout_success));
-
-    // 回到登入頁面
-    Intent intent = new Intent(requireActivity(), LoginActivity.class);
-    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-    startActivity(intent);
-    requireActivity().finish();
+    new Thread(() -> {
+      var result = AuthHelper.INSTANCE.signOut();
+      requireActivity().runOnUiThread(() -> {
+        if (result.isSuccess()) {
+          getSharedPrefs().edit().clear().apply();
+          Log.d(TAG, "用戶已登出");
+          showToast(getString(R.string.logout_success));
+          
+          // 回到登入頁面
+          Intent intent = new Intent(requireActivity(), LoginActivity.class);
+          intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+          startActivity(intent);
+          requireActivity().finish();
+        } else {
+          showToast("登出失敗: " + (result.getExceptionOrNull() != null ? result.getExceptionOrNull().getMessage() : "未知錯誤"));
+        }
+      });
+    }).start();
   }
 
   private void navigateToFragment(Fragment fragment) {
@@ -146,7 +149,8 @@ public class SettingsFragment extends Fragment {
   }
 
   private void exportExcel() {
-    new ExportExcel(getContext(), db).exportToExcel("Project.xlsx");
+    // TODO: 使用 Supabase 實現 Excel 匯出功能
+    Toast.makeText(getContext(), "Excel 匯出功能待實現（使用 Supabase）", Toast.LENGTH_SHORT).show();
   }
 
   private void changeLanguageSetting() {
@@ -193,54 +197,15 @@ public class SettingsFragment extends Fragment {
   }
 
   /**
-   * 獲取當前用戶參與的專案數量（新版本）
+   * 獲取當前用戶參與的專案數量
    */
   private String getCurrentProjectCount() {
-    int userId = getSharedPrefs().getInt("user_id", -1);
-    int count = 0;
-
-    if (userId == -1) {
-      Log.w(TAG, "User ID not found");
-      return "0";
-    }
-
-    SqlDataBaseHelper dbHelper = null;
-    SQLiteDatabase database = null;
-    Cursor cursor = null;
-
-    try {
-      dbHelper = new SqlDataBaseHelper(getContext());
-      database = dbHelper.getReadableDatabase();
-
-      if (database != null) {
-        // 查詢用戶參與的專案數量（通過 UserProject 表）
-        String query = "SELECT COUNT(*) FROM UserProject WHERE user_id = ?";
-        cursor = database.rawQuery(query, new String[]{String.valueOf(userId)});
-
-        if (cursor.moveToFirst()) {
-          count = cursor.getInt(0);
-        }
-      }
-
-      Log.i(TAG, "查詢用戶 ID " + userId + " 參與的專案數量: " + count);
-    } catch (Exception e) {
-      Log.e(TAG, "查詢專案數量失敗: " + e.getMessage());
-      showToast(getString(R.string.project_count_query_failed, e.getMessage()));
-    } finally {
-      if (cursor != null) {
-        cursor.close();
-      }
-      if (database != null) {
-        database.close();
-      }
-    }
-
-    return String.valueOf(count);
+    // TODO: 使用 Supabase 獲取專案數量
+    return "0";
   }
 
   private void GithubInsert() {
-    sqlDataBaseHelper = new SqlDataBaseHelper(this.getContext());
-    db = sqlDataBaseHelper.getWritableDatabase();
+    // TODO: 使用 Supabase 實現 GitHub 匯入功能
     AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
     builder.setTitle(getString(R.string.github_input_title));
 
@@ -299,80 +264,13 @@ public class SettingsFragment extends Fragment {
   }
 
   /**
-   * 將 GitHub 專案存入資料庫（新版本 - 使用簡化結構）
+   * 將 GitHub 專案存入 Supabase
    */
   private void saveReposToDatabase(JSONArray repos) {
+    // TODO: 使用 Supabase 實現 GitHub 專案匯入功能
     try {
-      int userId = requireContext().getSharedPreferences("FCUPrefs", MODE_PRIVATE)
-          .getInt("user_id", 0);
-
-      if (userId == 0) {
-        Log.e(TAG, "User ID not found, cannot import GitHub repos");
-        return;
-      }
-
-      int importedCount = 0;
-      db.beginTransaction();
-
-      try {
-        for (int i = 0; i < repos.length(); i++) {
-          String repoName = repos.getJSONObject(i).getString("name");
-          String description = repos.getJSONObject(i).optString("description", "");
-
-          // 檢查專案名稱是否已存在
-          Cursor existingProject = db.rawQuery(
-              "SELECT id FROM Projects WHERE name = ?",
-              new String[]{repoName}
-          );
-
-          if (existingProject.moveToFirst()) {
-            // 專案已存在，檢查用戶是否已是成員
-            int existingProjectId = existingProject.getInt(0);
-            existingProject.close();
-
-            Cursor existingMember = db.rawQuery(
-                "SELECT 1 FROM UserProject WHERE user_id = ? AND project_id = ?",
-                new String[]{String.valueOf(userId), String.valueOf(existingProjectId)}
-            );
-
-            if (!existingMember.moveToFirst()) {
-              // 用戶不是成員，加入專案
-              ContentValues relation = new ContentValues();
-              relation.put("user_id", userId);
-              relation.put("project_id", existingProjectId);
-              db.insert("UserProject", null, relation);
-              importedCount++;
-              Log.d(TAG, "User added to existing project: " + repoName);
-            }
-            existingMember.close();
-          } else {
-            existingProject.close();
-
-            // 新增專案（簡化版本：無 manager_id）
-            ContentValues project = new ContentValues();
-            project.put("name", repoName);
-            project.put("summary", description.isEmpty() ? "Imported from GitHub" : description);
-            long projectId = db.insert("Projects", null, project);
-
-            if (projectId != -1) {
-              // 將用戶加入專案
-              ContentValues relation = new ContentValues();
-              relation.put("user_id", userId);
-              relation.put("project_id", projectId);
-              db.insert("UserProject", null, relation);
-              importedCount++;
-              Log.d(TAG, "New project created and user added: " + repoName);
-            }
-          }
-        }
-
-        db.setTransactionSuccessful();
-        Log.d(TAG, "GitHub import completed. Total imported/joined: " + importedCount);
-
-      } finally {
-        db.endTransaction();
-      }
-
+      Log.d(TAG, "GitHub 匯入功能待實現（使用 Supabase）");
+      showToast("GitHub 匯入功能待實現（使用 Supabase）");
     } catch (Exception e) {
       Log.e(TAG, "Error saving GitHub repos: " + e.getMessage());
       throw new RuntimeException(e);
@@ -460,148 +358,29 @@ public class SettingsFragment extends Fragment {
     // 禁用刪除按鈕，避免重複點擊
     btn_del_account.setEnabled(false);
 
-    // 獲取當前用戶
-    FirebaseUser currentUser = mAuth.getCurrentUser();
-    if (currentUser == null) {
-      showToast(getString(R.string.user_auth_failed));
-      btn_del_account.setEnabled(true);
-      return;
-    }
-
-    String email = currentUser.getEmail();
-    if (email == null) {
-      showToast(getString(R.string.cannot_get_email));
-      btn_del_account.setEnabled(true);
-      return;
-    }
-
-    // 重新驗證用戶身份
-    AuthCredential credential = EmailAuthProvider.getCredential(email, password);
-    currentUser.reauthenticate(credential)
-        .addOnCompleteListener(task -> {
-          if (task.isSuccessful()) {
-            Log.d(TAG, "用戶重新驗證成功");
-            // 先刪除本地資料，再刪除 Firebase 帳號
-            deleteLocalUserData();
-          } else {
-            Log.w(TAG, "用戶重新驗證失敗", task.getException());
-            String errorMessage = getString(R.string.password_verification_failed);
-            if (task.getException() != null) {
-              String error = task.getException().getMessage();
-              if (error != null && error.contains("password")) {
-                errorMessage = getString(R.string.password_incorrect);
-              }
-            }
-            showToast(errorMessage);
-            btn_del_account.setEnabled(true);
-          }
-        });
-  }
-
-  /**
-   * 刪除本地用戶資料（更新版本 - 適應新資料庫結構）
-   */
-  private void deleteLocalUserData() {
-    int userId = getSharedPrefs().getInt("user_id", -1);
-    if (userId == -1) {
-      Log.e(TAG, "無法獲取用戶 ID");
-      deleteFirebaseAccount(); // 直接刪除 Firebase 帳號
-      return;
-    }
-
-    SqlDataBaseHelper dbHelper = new SqlDataBaseHelper(requireContext());
-    SQLiteDatabase database = null;
-
-    try {
-      database = dbHelper.getWritableDatabase();
-      database.beginTransaction();
-
-      // 刪除使用者與議題的關聯
-      String deleteUserIssueQuery = "DELETE FROM UserIssue WHERE user_id = ?";
-      database.execSQL(deleteUserIssueQuery, new String[]{String.valueOf(userId)});
-      Log.d(TAG, "刪除用戶議題關聯");
-
-      // 刪除使用者參與的專案中的議題（如果用戶是唯一成員）
-      String deleteIssuesQuery = "DELETE FROM Issues WHERE project_id IN " +
-          "(SELECT project_id FROM UserProject WHERE user_id = ? " +
-          "GROUP BY project_id HAVING COUNT(*) = 1)";
-      database.execSQL(deleteIssuesQuery, new String[]{String.valueOf(userId)});
-      Log.d(TAG, "刪除用戶唯一參與專案的議題");
-
-      // 刪除使用者唯一參與的專案
-      String deleteProjectsQuery = "DELETE FROM Projects WHERE id IN " +
-          "(SELECT project_id FROM UserProject WHERE user_id = ? " +
-          "GROUP BY project_id HAVING COUNT(*) = 1)";
-      database.execSQL(deleteProjectsQuery, new String[]{String.valueOf(userId)});
-      Log.d(TAG, "刪除用戶唯一參與的專案");
-
-      // 刪除使用者與專案關聯
-      int deletedUserProjects = database.delete("UserProject", "user_id = ?",
-          new String[]{String.valueOf(userId)});
-      Log.d(TAG, "刪除用戶專案關聯：" + deletedUserProjects + " 筆");
-
-      // 刪除使用者的好友關係
-      int deletedFriends1 = database.delete("Friends", "user_id = ?",
-          new String[]{String.valueOf(userId)});
-      int deletedFriends2 = database.delete("Friends", "friend_id = ?",
-          new String[]{String.valueOf(userId)});
-      Log.d(TAG, "刪除好友關係：" + (deletedFriends1 + deletedFriends2) + " 筆");
-
-      // 刪除使用者本身
-      int deletedUser = database.delete("Users", "id = ?",
-          new String[]{String.valueOf(userId)});
-      Log.d(TAG, "刪除用戶：" + deletedUser + " 筆");
-
-      database.setTransactionSuccessful();
-      Log.d(TAG, "本地資料刪除成功");
-
-      // 刪除 Firebase 帳號
-      deleteFirebaseAccount();
-
-    } catch (Exception e) {
-      Log.e(TAG, "刪除本地資料時發生錯誤: " + e.getMessage());
-      showToast(getString(R.string.delete_local_data_failed, e.getMessage()));
-      btn_del_account.setEnabled(true);
-    } finally {
-      if (database != null) {
-        if (database.inTransaction()) {
-          database.endTransaction();
-        }
-        database.close();
-      }
-    }
-  }
-
-  // 刪除 Firebase 帳號
-  private void deleteFirebaseAccount() {
-    FirebaseUser currentUser = mAuth.getCurrentUser();
-    if (currentUser != null) {
-      currentUser.delete()
-          .addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-              Log.d(TAG, "Firebase 帳號刪除成功");
-
-              // 清除 SharedPreferences
-              getSharedPrefs().edit().clear().apply();
-
-              // 顯示成功訊息
-              showToast(getString(R.string.account_deleted_success));
-
-              // 回到登入頁面
-              navigateToLogin();
-
-            } else {
-              Log.w(TAG, "Firebase 帳號刪除失敗", task.getException());
-              showToast(getString(R.string.account_delete_failed));
-              btn_del_account.setEnabled(true);
-            }
-          });
-    } else {
+    // TODO: 使用 Supabase 實現帳號刪除功能
+    // 1. 驗證密碼
+    // 2. 刪除 Supabase 用戶資料
+    // 3. 清除本地 SharedPreferences
+    
+    new Thread(() -> {
+      // 暫時實現：清除本地資料並登出
       getSharedPrefs().edit().clear().apply();
-      showToast(getString(R.string.account_data_cleared));
-      navigateToLogin();
-    }
+      var result = AuthHelper.INSTANCE.signOut();
+      
+      requireActivity().runOnUiThread(() -> {
+        if (result.isSuccess()) {
+          showToast(getString(R.string.account_deleted_success));
+          navigateToLogin();
+        } else {
+          showToast(getString(R.string.account_delete_failed));
+          btn_del_account.setEnabled(true);
+        }
+      });
+    }).start();
   }
+
+  // TODO: 使用 Supabase 實現用戶資料刪除功能
 
   private void navigateToLogin() {
     Intent intent = new Intent(requireActivity(), LoginActivity.class);

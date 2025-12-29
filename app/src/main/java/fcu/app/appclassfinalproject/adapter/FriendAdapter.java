@@ -2,6 +2,7 @@ package fcu.app.appclassfinalproject.adapter;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.util.Log;
 import android.view.View;
@@ -12,10 +13,14 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import fcu.app.appclassfinalproject.ChatActivity;
 import fcu.app.appclassfinalproject.R;
+import fcu.app.appclassfinalproject.helper.SupabaseProjectHelper;
 import fcu.app.appclassfinalproject.main_fragments.FriendFragment;
 import fcu.app.appclassfinalproject.model.User;
 import java.util.List;
+import static android.content.Context.MODE_PRIVATE;
+import android.content.SharedPreferences;
 
 public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.ViewHolder> {
 
@@ -23,10 +28,12 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.ViewHolder
   private List<User> friendList;
   private FriendFragment friendFragment;
   private static final String TAG = "FriendAdapter";
+  private SupabaseProjectHelper supabaseProjectHelper;
 
   public FriendAdapter(Context context, List<User> friendList) {
     this.context = context;
     this.friendList = friendList;
+    this.supabaseProjectHelper = new SupabaseProjectHelper();
     Log.d(TAG, "FriendAdapter 創建，朋友數量: " + friendList.size());
   }
 
@@ -106,11 +113,62 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.ViewHolder
     holder.tvFriendName.setText("👤 " + friend.getAccount());
     holder.tvFriendEmail.setText("📧 " + friend.getEmail());
 
+    // 點擊整個項目進入聊天
+    holder.itemView.setOnClickListener(v -> {
+      startChatWithFriend(friend);
+    });
+
     // 設置刪除按鈕點擊事件
     holder.btnDelete.setOnClickListener(v -> {
       Log.d(TAG, "準備刪除朋友: " + friend.getAccount());
       showDeleteConfirmDialog(friend, position);
     });
+  }
+
+  /**
+   * 開始與好友聊天
+   */
+  private void startChatWithFriend(User friend) {
+    SharedPreferences prefs = context.getSharedPreferences("FCUPrefs", MODE_PRIVATE);
+    String currentUserId = supabaseProjectHelper.getCurrentUserId();
+
+    if (currentUserId == null) {
+      Toast.makeText(context, "請先登入", Toast.LENGTH_SHORT).show();
+      return;
+    }
+
+    // 獲取好友的 Supabase 用戶 ID（需要從 Supabase 獲取）
+    // 這裡假設 friend.getID() 返回的是 Supabase 用戶 ID
+    // 如果實際情況不同，需要根據 email 或其他方式查找
+    String friendId = String.valueOf(friend.getID());
+
+    new Thread(() -> {
+      try {
+        Integer chatroomId = supabaseProjectHelper.createPrivateChatRoom(currentUserId, friendId);
+
+        if (chatroomId != null && chatroomId != -1) {
+          android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+          handler.post(() -> {
+            Intent intent = new Intent(context, ChatActivity.class);
+            intent.putExtra("chatroom_id", chatroomId);
+            intent.putExtra("chatroom_name", friend.getAccount());
+            intent.putExtra("chatroom_type", "private");
+            context.startActivity(intent);
+          });
+        } else {
+          android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+          handler.post(() -> {
+            Toast.makeText(context, "無法建立聊天室", Toast.LENGTH_SHORT).show();
+          });
+        }
+      } catch (Exception e) {
+        Log.e(TAG, "建立聊天室失敗: " + e.getMessage(), e);
+        android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+        handler.post(() -> {
+          Toast.makeText(context, "建立聊天室失敗", Toast.LENGTH_SHORT).show();
+        });
+      }
+    }).start();
   }
 
   @Override
@@ -148,7 +206,7 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.ViewHolder
 
     TextView tvFriendName;
     TextView tvFriendEmail;
-    Button btnDelete;
+    public Button btnDelete;
 
     public ViewHolder(@NonNull View itemView, TextView tvFriendName, TextView tvFriendEmail,
         Button btnDelete) {

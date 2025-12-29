@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
-    id 'com.google.gms.google-services'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.9.22'
 }
 
 android {
@@ -24,8 +25,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
     }
 }
 
@@ -39,11 +43,26 @@ dependencies {
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
 
-    implementation(platform(libs.firebase.bom))
-    implementation libs.firebase.auth
-    implementation libs.firebase.firestore
-    implementation libs.firebase.storage
     implementation libs.poi
     implementation libs.poi.ooxml
+    
+    // Supabase dependencies (using REST API approach for Java)
+    implementation libs.okhttp
+    implementation libs.gson
+    implementation libs.websocket
 
+    // Supabase
+    implementation platform('io.github.jan-tennert.supabase:bom:2.0.0')
+    implementation 'io.github.jan-tennert.supabase:postgrest-kt'
+    implementation 'io.github.jan-tennert.supabase:gotrue-kt'
+    implementation 'io.github.jan-tennert.supabase:storage-kt'
+    implementation 'io.github.jan-tennert.supabase:realtime-kt'
+
+    // Ktor
+    implementation 'io.ktor:ktor-client-android:2.3.10'
+    implementation 'io.ktor:ktor-client-core:2.3.10'
+    implementation 'io.ktor:ktor-utils:2.3.10'
+
+    // KotlinX Serialization
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3'
 }

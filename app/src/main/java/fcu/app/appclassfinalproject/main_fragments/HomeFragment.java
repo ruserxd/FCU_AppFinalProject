@@ -3,8 +3,6 @@ package fcu.app.appclassfinalproject.main_fragments;
 import static android.content.Context.MODE_PRIVATE;
 
 import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -18,8 +16,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import fcu.app.appclassfinalproject.R;
 import fcu.app.appclassfinalproject.adapter.ProjectAdapter;
-import fcu.app.appclassfinalproject.helper.ProjectHelper;
-import fcu.app.appclassfinalproject.helper.SqlDataBaseHelper;
+import fcu.app.appclassfinalproject.helper.SupabaseProjectHelper;
 import fcu.app.appclassfinalproject.model.Project;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +38,7 @@ public class HomeFragment extends Fragment {
   private TextView tvName;
   private ProjectAdapter adapter;
   private List<Project> projectList;
-  private SqlDataBaseHelper dbHelper;
+  private SupabaseProjectHelper supabaseHelper;
 
   public HomeFragment() {
     // Required empty public constructor
@@ -99,80 +96,27 @@ public class HomeFragment extends Fragment {
 
     tvName.setText(email); // 顯示原始 email
 
-    // 初始化資料庫
-    dbHelper = new SqlDataBaseHelper(requireContext());
-    SQLiteDatabase db = dbHelper.getReadableDatabase();
-
-    // 查詢使用者 ID（使用小寫 email）
-    int userId = getUserIdByEmail(db, normalizedEmail);
-
-    if (userId != -1) {
-      Log.d(TAG, "查到 user_id: " + userId + " for email: " + normalizedEmail);
-      // 使用 ProjectHelper 來獲取用戶相關的專案
-      projectList = ProjectHelper.getProjectsByUser(db, userId);
-      Log.d(TAG, "找到 " + projectList.size() + " 個專案");
-    } else {
-      Log.e(TAG, "找不到對應的 email user_id: " + normalizedEmail);
-      projectList = new ArrayList<>();
-    }
+    // TODO: 使用 Supabase 獲取專案列表
+    supabaseHelper = new SupabaseProjectHelper();
+    projectList = new ArrayList<>();
+    
+    // 暫時顯示空列表
+    Log.d(TAG, "專案列表功能待實現（使用 Supabase）");
 
     // 設定適配器
     adapter = new ProjectAdapter(getContext(), projectList);
     recyclerView.setAdapter(adapter);
-
-    db.close();
-  }
-
-  /**
-   * 根據 email 獲取用戶 ID（使用小寫比較）
-   */
-  private int getUserIdByEmail(SQLiteDatabase db, String email) {
-    int userId = -1;
-
-    // 確保傳入的 email 是小寫
-    String normalizedEmail = email.toLowerCase().trim();
-
-    try (Cursor userCursor = db.rawQuery("SELECT id FROM Users WHERE LOWER(TRIM(email)) = ?",
-        new String[]{normalizedEmail})) {
-      if (userCursor.moveToFirst()) {
-        userId = userCursor.getInt(0);
-        Log.d(TAG, "成功找到用戶 ID: " + userId + " for email: " + normalizedEmail);
-      } else {
-        Log.w(TAG, "未找到用戶 email: " + normalizedEmail);
-      }
-    } catch (Exception e) {
-      Log.e(TAG, "Error getting user ID: " + e.getMessage());
-    }
-
-    return userId;
   }
 
   /**
    * 刷新專案列表
    */
   public void refreshProjectList() {
-    if (dbHelper != null) {
-      SharedPreferences prefs = requireContext().getSharedPreferences("FCUPrefs", MODE_PRIVATE);
-      String email = prefs.getString("email", "使用者");
-
-      // email 轉換為小寫
-      String normalizedEmail = email.toLowerCase().trim();
-
-      SQLiteDatabase db = dbHelper.getReadableDatabase();
-      int userId = getUserIdByEmail(db, normalizedEmail);
-
-      if (userId != -1) {
-        projectList.clear();
-        projectList.addAll(ProjectHelper.getProjectsByUser(db, userId));
-        if (adapter != null) {
-          adapter.notifyDataSetChanged();
-        }
-        Log.d(TAG, "專案列表已刷新，共 " + projectList.size() + " 個專案");
-      } else {
-        Log.w(TAG, "刷新時找不到用戶 ID for email: " + normalizedEmail);
-      }
-      db.close();
+    // TODO: 使用 Supabase 刷新專案列表
+    if (adapter != null) {
+      adapter.notifyDataSetChanged();
     }
+    Log.d(TAG, "專案列表刷新功能待實現（使用 Supabase）");
   }
 
   @Override

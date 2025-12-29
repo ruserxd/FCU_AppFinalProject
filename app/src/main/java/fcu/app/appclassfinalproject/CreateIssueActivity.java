@@ -12,14 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.FirebaseFirestore;
-import java.util.HashMap;
-import java.util.Map;
+// TODO: 使用 Supabase 實現議題建立功能
 
 public class CreateIssueActivity extends AppCompatActivity {
 
@@ -32,9 +25,7 @@ public class CreateIssueActivity extends AppCompatActivity {
   private ImageButton btnHome;
   private ImageButton btnSave;
 
-  //TODO:確認使用Fire base/ SQLite
-  private FirebaseAuth mAuth;
-  private FirebaseFirestore db;
+  // TODO: 使用 Supabase 實現議題建立功能
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -47,8 +38,7 @@ public class CreateIssueActivity extends AppCompatActivity {
       return insets;
     });
 
-    FirebaseApp.initializeApp(this);
-    mAuth = FirebaseAuth.getInstance();
+    // TODO: 初始化 Supabase
 
     //找對應id
     etName = findViewById(R.id.et_name);
@@ -87,30 +77,8 @@ public class CreateIssueActivity extends AppCompatActivity {
 //                String status = etStatus.getText().toString().trim();
 //                String designee = etDesignee.getText().toString().trim();
 
-        Map<String, Object> issue = new HashMap<>();
-//                TODO:新增issue id
-//                issue.put("id",id);
-        issue.put("name", name);
-        issue.put("summary", summary);
-        issue.put("start_time", start_time);
-        issue.put("end_time", end_time);
-//                issue.put("project_id",projectId);
-//                issue.put("status",status);
-//                issue.put("designee",designee);
-        db.collection("issues").add(issue)
-            .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
-              @Override
-              public void onSuccess(DocumentReference documentReference) {
-                Toast.makeText(CreateIssueActivity.this, "建立成功，ID:", Toast.LENGTH_LONG).show();
-                clearFields();
-              }
-            }).addOnFailureListener(new OnFailureListener() {
-              @Override
-              public void onFailure(@NonNull Exception e) {
-                Toast.makeText(CreateIssueActivity.this, "建立失敗，請檢查輸入是否正確",
-                    Toast.LENGTH_LONG).show();
-              }
-            });
+        // TODO: 使用 Supabase 建立議題
+        Toast.makeText(CreateIssueActivity.this, "議題建立功能待實現（使用 Supabase）", Toast.LENGTH_LONG).show();
 
 
       }

@@ -5,8 +5,6 @@ import static android.content.Context.MODE_PRIVATE;
 import android.app.DatePickerDialog;
 import android.content.ContentValues;
 import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -21,8 +19,7 @@ import android.widget.EditText;
 import android.widget.Toast;
 import androidx.fragment.app.Fragment;
 import fcu.app.appclassfinalproject.R;
-import fcu.app.appclassfinalproject.helper.ProjectHelper;
-import fcu.app.appclassfinalproject.helper.SqlDataBaseHelper;
+import fcu.app.appclassfinalproject.helper.SupabaseProjectHelper;
 import java.util.Calendar;
 import java.util.List;
 
@@ -45,8 +42,7 @@ public class AddIssueFragment extends Fragment {
 
   String[] items = {"未開始", "進行中", "已完成"};
   String[] itemsEN = {"TO-DO", "In progress", "Finished"};
-  private SqlDataBaseHelper sqlDataBaseHelper;
-  private SQLiteDatabase db;
+  private SupabaseProjectHelper supabaseHelper;
   private int currentProjectId = -1;
 
   public AddIssueFragment() {
@@ -101,9 +97,8 @@ public class AddIssueFragment extends Fragment {
     // Inflate the layout for this fragment
     View view = inflater.inflate(R.layout.fragment_add_issue, container, false);
 
-    // 初始化資料庫
-    sqlDataBaseHelper = new SqlDataBaseHelper(this.getContext());
-    db = sqlDataBaseHelper.getWritableDatabase();
+    // 初始化 Supabase
+    supabaseHelper = new SupabaseProjectHelper();
 
     // 獲取當前專案ID
     SharedPreferences prefs = view.getContext().getSharedPreferences("FCUPrefs", MODE_PRIVATE);
@@ -240,98 +235,37 @@ public class AddIssueFragment extends Fragment {
       return;
     }
 
-    // 建立議題
-    ContentValues values = new ContentValues();
-    values.put("name", name);
-    values.put("summary", summary);
-    values.put("start_time", start_time);
-    values.put("end_time", end_time);
-    values.put("status", status);
-    values.put("designee", designee);
-    values.put("project_id", currentProjectId);
-
-    long rowId = db.insert("Issues", null, values);
-    Log.d(TAG, "Issue insert result: " + rowId);
-
-    if (rowId != -1) {
-      // 建立 UserIssue 關聯
-      int designeeUserId = getUserIdByAccount(designee);
-      if (designeeUserId != -1) {
-        ContentValues userIssueValues = new ContentValues();
-        userIssueValues.put("user_id", designeeUserId);
-        userIssueValues.put("issue_id", (int) rowId);
-
-        long linkResult = db.insert("UserIssue", null, userIssueValues);
-        Log.d(TAG, "UserIssue insert result: " + linkResult);
-      }
-
-      Toast.makeText(getContext(), "議題建立成功", Toast.LENGTH_SHORT).show();
-      clearFields();  // 清除表單
-
-      // 返回專案資訊頁面
-      Fragment projectInfoFragment = ProjectInfoFragment.newInstance("", "");
-      setCurrentFragment(projectInfoFragment);
-    } else {
-      Toast.makeText(getContext(), "議題建立失敗", Toast.LENGTH_SHORT).show();
-      Log.e(TAG, "Failed to insert issue");
-    }
+    // TODO: 使用 Supabase 建立議題
+    Toast.makeText(getContext(), "議題建立功能待實現（使用 Supabase）", Toast.LENGTH_SHORT).show();
+    Log.d(TAG, "議題建立功能待實現（使用 Supabase）");
   }
 
   /**
    * 獲取專案成員列表
    */
   public String[] getProjectMemberList(int projectId) {
+    // TODO: 使用 Supabase 獲取專案成員列表
     if (projectId == -1) {
       Log.e(TAG, "Invalid project ID");
       return new String[0];
     }
-
-    List<String> memberList = ProjectHelper.getProjectMemberNames(db, projectId);
-    Log.d(TAG, "Found " + memberList.size() + " members for project " + projectId);
-
-    return memberList.toArray(new String[0]);
+    return new String[0];
   }
 
   /**
    * 驗證指派者是否為專案成員
    */
   private boolean isValidProjectMember(String account, int projectId) {
-    try {
-      String query = "SELECT COUNT(*) FROM Users u " +
-          "INNER JOIN UserProject up ON u.id = up.user_id " +
-          "WHERE u.account = ? AND up.project_id = ?";
-
-      Cursor cursor = db.rawQuery(query, new String[]{account, String.valueOf(projectId)});
-      boolean isValid = false;
-      if (cursor.moveToFirst()) {
-        isValid = cursor.getInt(0) > 0;
-      }
-      cursor.close();
-
-      Log.d(TAG, "Account '" + account + "' is valid project member: " + isValid);
-      return isValid;
-    } catch (Exception e) {
-      Log.e(TAG, "Error validating project member: " + e.getMessage());
-      return false;
-    }
+    // TODO: 使用 Supabase 驗證指派者是否為專案成員
+    return false;
   }
 
   /**
    * 根據帳號獲取用戶ID
    */
   private int getUserIdByAccount(String account) {
-    try {
-      Cursor cursor = db.rawQuery("SELECT id FROM Users WHERE account = ?", new String[]{account});
-      int userId = -1;
-      if (cursor.moveToFirst()) {
-        userId = cursor.getInt(0);
-      }
-      cursor.close();
-      return userId;
-    } catch (Exception e) {
-      Log.e(TAG, "Error getting user ID: " + e.getMessage());
-      return -1;
-    }
+    // TODO: 使用 Supabase 根據帳號獲取用戶ID
+    return -1;
   }
 
   /**
@@ -374,9 +308,7 @@ public class AddIssueFragment extends Fragment {
   @Override
   public void onDestroyView() {
     super.onDestroyView();
-    if (db != null && db.isOpen()) {
-      db.close();
-      Log.d(TAG, "Database connection closed");
-    }
+    // Supabase 不需要手動關閉連接
+    Log.d(TAG, "Fragment destroyed");
   }
 }

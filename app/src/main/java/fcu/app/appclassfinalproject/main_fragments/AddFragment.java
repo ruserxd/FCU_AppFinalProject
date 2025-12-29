@@ -1,8 +1,5 @@
 package fcu.app.appclassfinalproject.main_fragments;
 
-import android.content.ContentValues;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -20,7 +17,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import fcu.app.appclassfinalproject.R;
-import fcu.app.appclassfinalproject.helper.SqlDataBaseHelper;
+import fcu.app.appclassfinalproject.helper.SupabaseProjectHelper;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,8 +40,7 @@ public class AddFragment extends Fragment {
   private Button btnADD;
   private Button btnAddMember;
   private RecyclerView rvSelectedMembers;
-  private SqlDataBaseHelper sqlDataBaseHelper;
-  private SQLiteDatabase db;
+  private SupabaseProjectHelper supabaseHelper;
 
   private String[] accountList = new String[]{};
   private ArrayAdapter<String> adapter;
@@ -103,13 +99,12 @@ public class AddFragment extends Fragment {
 
   private boolean initializeDatabase() {
     try {
-      Log.d(TAG, "Initializing database...");
-      sqlDataBaseHelper = new SqlDataBaseHelper(this.getContext());
-      db = sqlDataBaseHelper.getWritableDatabase();
-      Log.d(TAG, "Database initialized successfully");
+      Log.d(TAG, "Initializing Supabase...");
+      supabaseHelper = new SupabaseProjectHelper();
+      Log.d(TAG, "Supabase initialized successfully");
       return true;
     } catch (Exception e) {
-      Log.e(TAG, "Database initialization failed: " + e.getMessage(), e);
+      Log.e(TAG, "Supabase initialization failed: " + e.getMessage(), e);
       return false;
     }
   }
@@ -328,50 +323,9 @@ public class AddFragment extends Fragment {
       return;
     }
 
-    // 建立專案
-    ContentValues projectValues = new ContentValues();
-    projectValues.put("name", name);
-    projectValues.put("summary", summary);
-
-    long projectId = db.insert("Projects", null, projectValues);
-    Log.d(TAG, "Project insert result: " + projectId);
-
-    if (projectId != -1) {
-      // 新增專案成員關聯
-      boolean allMembersAdded = true;
-      for (String memberAccount : selectedMembers) {
-        int memberId = getUserIdByAccount(memberAccount);
-        Log.d(TAG, "Adding member: " + memberAccount + " with ID: " + memberId);
-
-        if (memberId != -1) {
-          ContentValues userProjectValues = new ContentValues();
-          userProjectValues.put("user_id", memberId);
-          userProjectValues.put("project_id", (int) projectId);
-
-          long linkResult = db.insert("UserProject", null, userProjectValues);
-          Log.d(TAG, "UserProject insert result for " + memberAccount + ": " + linkResult);
-
-          if (linkResult == -1) {
-            allMembersAdded = false;
-            Log.e(TAG, "Failed to add member: " + memberAccount);
-          }
-        } else {
-          allMembersAdded = false;
-          Log.e(TAG, "Member not found: " + memberAccount);
-        }
-      }
-
-      if (allMembersAdded) {
-        Toast.makeText(getContext(), "專案「" + name + "」建立成功！", Toast.LENGTH_SHORT).show();
-        clearForm();
-        Log.d(TAG, "Project created successfully and form cleared");
-      } else {
-        Toast.makeText(getContext(), "專案建立成功，但部分成員新增失敗", Toast.LENGTH_SHORT).show();
-      }
-    } else {
-      Toast.makeText(getContext(), "專案建立失敗，請重試", Toast.LENGTH_SHORT).show();
-      Log.e(TAG, "Failed to insert project");
-    }
+    // TODO: 使用 Supabase 建立專案
+    Toast.makeText(getContext(), "專案建立功能待實現（使用 Supabase）", Toast.LENGTH_SHORT).show();
+    Log.d(TAG, "專案建立功能待實現（使用 Supabase）");
   }
 
   private void clearForm() {
@@ -385,42 +339,13 @@ public class AddFragment extends Fragment {
   }
 
   private boolean isAccountExist(String account) {
-    Cursor cursor = null;
-    try {
-      cursor = db.rawQuery("SELECT id FROM Users WHERE account = ? COLLATE NOCASE",
-          new String[]{account});
-      boolean exists = cursor.moveToFirst();
-      Log.d(TAG, "Account '" + account + "' exists: " + exists);
-      return exists;
-    } catch (Exception e) {
-      Log.e(TAG, "Error checking account existence: " + e.getMessage());
-      return false;
-    } finally {
-      if (cursor != null) {
-        cursor.close();
-      }
-    }
+    // TODO: 使用 Supabase 檢查帳號是否存在
+    return false;
   }
 
   private int getUserIdByAccount(String account) {
-    Cursor cursor = null;
-    try {
-      cursor = db.rawQuery("SELECT id FROM Users WHERE account = ? COLLATE NOCASE",
-          new String[]{account});
-      int userId = -1;
-      if (cursor.moveToFirst()) {
-        userId = cursor.getInt(0);
-      }
-      Log.d(TAG, "User ID for account '" + account + "': " + userId);
-      return userId;
-    } catch (Exception e) {
-      Log.e(TAG, "Error getting user ID: " + e.getMessage());
-      return -1;
-    } finally {
-      if (cursor != null) {
-        cursor.close();
-      }
-    }
+    // TODO: 使用 Supabase 根據帳號獲取用戶 ID
+    return -1;
   }
 
   private void updateAddMemberButtonState() {
@@ -442,41 +367,22 @@ public class AddFragment extends Fragment {
   }
 
   public String[] getAccountList() {
+    // TODO: 使用 Supabase 獲取帳號列表
     List<String> accountList = new ArrayList<>();
-    final String SQL = "SELECT account FROM Users ORDER BY account";
-
-    Cursor cursor = null;
-    try {
-      SQLiteDatabase readDb = sqlDataBaseHelper.getReadableDatabase();
-      cursor = readDb.rawQuery(SQL, null);
-
-      while (cursor.moveToNext()) {
-        String account = cursor.getString(0);
-        if (account != null && !account.trim().isEmpty()) {
-          accountList.add(account.trim());
-        }
-      }
-      Log.d(TAG, "Loaded " + accountList.size() + " accounts from database");
-    } catch (Exception e) {
-      Log.e(TAG, "Error loading account list: " + e.getMessage());
-      Toast.makeText(getContext(), "載入用戶列表時發生錯誤: " + e.getMessage(), Toast.LENGTH_SHORT)
-          .show();
-    } finally {
-      if (cursor != null) {
-        cursor.close();
-      }
-    }
-
+    // 暫時返回空列表
     return accountList.toArray(new String[0]);
+  }
+
+  private String[] getAccountListOld() {
+    // TODO: 使用 Supabase 獲取帳號列表
+    return new String[0];
   }
 
   @Override
   public void onDestroyView() {
     super.onDestroyView();
-    if (db != null && db.isOpen()) {
-      db.close();
-      Log.d(TAG, "Database connection closed");
-    }
+    // Supabase 不需要手動關閉連接
+    Log.d(TAG, "Fragment destroyed");
   }
 
   // 已選擇成員的適配器

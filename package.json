@@ -1,0 +1,24 @@
+{
+  "name": "chat-server",
+  "version": "1.0.0",
+  "description": "WebSocket 聊天伺服器 for 專案管理應用程式",
+  "main": "chat-server-example.js",
+  "scripts": {
+    "start": "node chat-server-example.js",
+    "dev": "nodemon chat-server-example.js"
+  },
+  "keywords": [
+    "websocket",
+    "chat",
+    "server"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
+

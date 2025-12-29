@@ -2,12 +2,12 @@
 
 ## 專案簡介
 
-這是一個基於 Android 平台的專案管理應用程式，提供完整的專案協作、議題追蹤、甘特圖視覺化等功能。應用程式使用 Firebase 進行身份驗證和雲端資料同步，並結合本地 SQLite 資料庫提供離線支援。
+這是一個基於 Android 平台的專案管理應用程式，提供完整的專案協作、議題追蹤、甘特圖視覺化等功能。應用程式使用 Supabase 進行身份驗證和雲端資料同步。
 
 ## 主要功能
 
 ### 1. 用戶管理
-- **註冊/登入系統**：使用 Firebase Authentication 進行用戶身份驗證
+- **註冊/登入系統**：使用 Supabase Authentication 進行用戶身份驗證（支援 Email 和 Gmail OAuth）
 - **多語言支援**：支援中文（繁體）和英文切換
 - **好友管理**：添加、刪除好友功能
 - **帳號刪除**：支援完整刪除帳號及相關資料
@@ -51,15 +51,18 @@
 - `androidx.constraintlayout:constraintlayout:2.2.1` - 約束佈局
 - `androidx.recyclerview` - RecyclerView（用於列表顯示）
 
-#### Firebase 服務
-- `com.google.firebase:firebase-bom:33.13.0` - Firebase BOM（統一版本管理）
-- `com.google.firebase:firebase-auth` - Firebase 身份驗證
-- `com.google.firebase:firebase-firestore` - Firestore 雲端資料庫
-- `com.google.firebase:firebase-storage` - Firebase 雲端儲存
+#### Supabase 服務
+- `io.github.jan-tennert.supabase:bom:2.0.0` - Supabase BOM（統一版本管理）
+- `io.github.jan-tennert.supabase:postgrest-kt` - Supabase PostgREST（資料庫操作）
+- `io.github.jan-tennert.supabase:auth-kt` - Supabase 身份驗證
+- `io.github.jan-tennert.supabase:storage-kt` - Supabase 雲端儲存
+- `io.github.jan-tennert.supabase:realtime-kt` - Supabase Realtime（即時同步）
 
 #### 第三方庫
 - `org.apache.poi:poi:5.4.0` - Apache POI（Excel 檔案處理）
 - `org.apache.poi:poi-ooxml:5.4.0` - Apache POI OOXML（Excel 2007+ 格式支援）
+- `io.ktor:ktor-client-android:2.3.10` - Ktor HTTP 客戶端
+- `org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3` - KotlinX 序列化
 
 #### 測試框架
 - `junit:junit:4.13.2` - JUnit 單元測試
@@ -72,7 +75,7 @@
 ```gradle
 plugins {
     alias(libs.plugins.android.application) apply false
-    id 'com.google.gms.google-services' version '4.4.2' apply false
+    id 'org.jetbrains.kotlin.android' version '1.9.22' apply false
 }
 ```
 
@@ -85,11 +88,19 @@ dependencies {
     implementation libs.activity
     implementation libs.constraintlayout
     
-    // Firebase
-    implementation(platform(libs.firebase.bom))
-    implementation libs.firebase.auth
-    implementation libs.firebase.firestore
-    implementation libs.firebase.storage
+    // Supabase
+    implementation platform('io.github.jan-tennert.supabase:bom:2.0.0')
+    implementation 'io.github.jan-tennert.supabase:postgrest-kt'
+    implementation 'io.github.jan-tennert.supabase:auth-kt'
+    implementation 'io.github.jan-tennert.supabase:storage-kt'
+    implementation 'io.github.jan-tennert.supabase:realtime-kt'
+    
+    // Ktor
+    implementation 'io.ktor:ktor-client-android:2.3.10'
+    implementation 'io.ktor:ktor-client-core:2.3.10'
+    
+    // KotlinX Serialization
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3'
     
     // Excel 處理
     implementation libs.poi
@@ -104,100 +115,66 @@ dependencies {
 
 ## 資料庫結構
 
-### SQLite 本地資料庫
-資料庫名稱：`FCU_FinalProjectDataBase`  
-資料庫版本：15
+### Supabase PostgreSQL 資料庫
+應用程式使用 Supabase 作為後端資料庫服務，所有資料存儲在 Supabase PostgreSQL 資料庫中。
 
-#### 表格結構
+#### 主要表格結構
 
-**1. Users（用戶表）**
-```sql
-CREATE TABLE Users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    account TEXT NOT NULL UNIQUE,
-    email TEXT NOT NULL UNIQUE,
-    firebase_uid TEXT UNIQUE
-)
-```
+**1. users（用戶表）**
+- `id` (UUID) - 主鍵
+- `account` (TEXT) - 用戶帳號
+- `email` (TEXT) - 電子郵件
 
-**2. Projects（專案表）**
-```sql
-CREATE TABLE Projects (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    summary TEXT NOT NULL
-)
-```
+**2. projects（專案表）**
+- `id` (INTEGER) - 主鍵
+- `name` (TEXT) - 專案名稱
+- `summary` (TEXT) - 專案概述
 
-**3. Issues（議題表）**
-```sql
-CREATE TABLE Issues (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    summary TEXT NOT NULL,
-    start_time TEXT NOT NULL,
-    end_time TEXT NOT NULL,
-    status TEXT NOT NULL,
-    designee TEXT NOT NULL,
-    project_id INTEGER NOT NULL,
-    FOREIGN KEY(project_id) REFERENCES Projects(id) ON DELETE CASCADE
-)
-```
+**3. issues（議題表）**
+- `id` (INTEGER) - 主鍵
+- `name` (TEXT) - 議題名稱
+- `summary` (TEXT) - 議題概述
+- `start_time` (TEXT) - 開始時間
+- `end_time` (TEXT) - 結束時間
+- `status` (TEXT) - 狀態
+- `designee` (TEXT) - 被指派者
+- `project_id` (INTEGER) - 專案 ID
 
-**4. UserProject（用戶-專案關聯表，多對多）**
-```sql
-CREATE TABLE UserProject (
-    user_id INTEGER NOT NULL,
-    project_id INTEGER NOT NULL,
-    PRIMARY KEY(user_id, project_id),
-    FOREIGN KEY(user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY(project_id) REFERENCES Projects(id) ON DELETE CASCADE
-)
-```
+**4. chatrooms（聊天室表）**
+- `id` (INTEGER) - 主鍵
+- `name` (TEXT) - 聊天室名稱
+- `type` (TEXT) - 類型（private/group）
+- `created_at` (TEXT) - 建立時間
+- `created_by` (TEXT) - 建立者 ID
 
-**5. UserIssue（用戶-議題關聯表，多對多）**
-```sql
-CREATE TABLE UserIssue (
-    user_id INTEGER NOT NULL,
-    issue_id INTEGER NOT NULL,
-    PRIMARY KEY(user_id, issue_id),
-    FOREIGN KEY(user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY(issue_id) REFERENCES Issues(id) ON DELETE CASCADE
-)
-```
+**5. messages（訊息表）**
+- `id` (INTEGER) - 主鍵
+- `chatroom_id` (INTEGER) - 聊天室 ID
+- `sender_id` (TEXT) - 發送者 ID
+- `content` (TEXT) - 訊息內容
+- `created_at` (TEXT) - 建立時間
 
-**6. Friends（好友表）**
-```sql
-CREATE TABLE Friends (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    friend_id INTEGER NOT NULL,
-    UNIQUE(user_id, friend_id),
-    FOREIGN KEY(user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY(friend_id) REFERENCES Users(id) ON DELETE CASCADE
-)
-```
+## Supabase API 使用
 
-## Firebase API 使用
+### Supabase Authentication
+- **註冊**：`AuthHelper.signUpWithEmail(email, password, account)`
+- **登入**：`AuthHelper.signInWithEmail(email, password)`
+- **Gmail 登入**：`AuthHelper.signInWithGoogle()`
+- **登出**：`AuthHelper.signOut()`
+- **當前用戶**：`AuthHelper.getCurrentUserId()`
 
-### Firebase Authentication
-- **註冊**：`FirebaseAuth.createUserWithEmailAndPassword(email, password)`
-- **登入**：`FirebaseAuth.signInWithEmailAndPassword(email, password)`
-- **登出**：`FirebaseAuth.signOut()`
-- **當前用戶**：`FirebaseAuth.getCurrentUser()`
-- **刪除帳號**：`FirebaseUser.delete()`
+### Supabase PostgREST
+- **查詢資料**：使用 `SupabaseManager.getClient().from("table_name").select()`
+- **插入資料**：使用 `SupabaseManager.getClient().from("table_name").insert()`
+- **更新資料**：使用 `SupabaseManager.getClient().from("table_name").update()`
+- **刪除資料**：使用 `SupabaseManager.getClient().from("table_name").delete()`
 
-### Firebase Firestore
-- **建立議題**：`FirebaseFirestore.collection("issues").add(issueData)`
-- **查詢資料**：使用 Firestore 查詢 API（部分功能）
+### Supabase Realtime
+- **即時同步**：使用 Supabase Realtime 進行聊天訊息和白板繪圖的即時同步
 
-### Firebase Storage
-- 已整合但主要用於未來擴展功能
-
-### Firebase 配置
-- **專案 ID**：`fcu-app-final-7efdb`
-- **配置檔案**：`app/google-services.json`
-- **API Key**：已配置在 `google-services.json` 中
+### Supabase 配置
+- **配置檔案**：在 `SupabaseManager.kt` 中設定 `SUPABASE_URL` 和 `SUPABASE_KEY`
+- **API Key**：從 Supabase 專案設定中獲取
 
 ## 專案結構
 
@@ -215,7 +192,11 @@ app/
 │   │   │   │   └── ProjectAdapter.java
 │   │   │   ├── helper/               # 輔助類別
 │   │   │   │   ├── ProjectHelper.java      # 專案相關資料庫操作
-│   │   │   │   └── SqlDataBaseHelper.java  # SQLite 資料庫管理
+│   │   │   │   └── SupabaseProjectHelper.java  # Supabase 資料庫操作
+│   │   │   ├── supabase/             # Supabase 相關
+│   │   │   │   ├── SupabaseManager.kt      # Supabase 客戶端管理
+│   │   │   │   ├── AuthHelper.kt           # 身份驗證輔助
+│   │   │   │   └── ChatHelper.kt           # 聊天室輔助
 │   │   │   ├── main_fragments/       # 主要 Fragment
 │   │   │   │   ├── AddFragment.java         # 新增專案
 │   │   │   │   ├── AddFriendFragment.java  # 新增好友
@@ -238,7 +219,6 @@ app/
 │   │   │   ├── LoginActivity.java          # 登入頁面
 │   │   │   ├── ProjectActivity.java        # 專案頁面
 │   │   │   ├── RegisterActivity.java       # 註冊頁面
-│   │   │   └── UserSyncHelper.java         # Firebase 與本地資料庫同步
 │   │   ├── res/                      # 資源檔案
 │   │   │   ├── layout/               # 佈局檔案
 │   │   │   ├── drawable/             # 圖形資源
@@ -302,7 +282,7 @@ cd 114-1_FCU_Network-Programming-Final-Project
 
 ### 執行環境要求
 - **Android 版本**：Android 8.0 (API 26) 或以上
-- **網路連線**：首次註冊/登入需要網路連線（Firebase Authentication）
+- **網路連線**：首次註冊/登入需要網路連線（Supabase Authentication）
 - **權限**：
   - `INTERNET` - 網路存取
   - `ACCESS_NETWORK_STATE` - 檢查網路狀態
@@ -314,16 +294,14 @@ cd 114-1_FCU_Network-Programming-Final-Project
 - **註冊流程**：
   1. 輸入帳號、電子郵件、密碼（至少 6 字元）
   2. 系統驗證輸入格式
-  3. 透過 Firebase Authentication 建立帳號
-  4. 同步用戶資料到本地 SQLite 資料庫
-  5. 自動登入並進入主頁面
+  3. 透過 Supabase Authentication 建立帳號
+  4. 自動登入並進入主頁面
 
 - **登入流程**：
-  1. 輸入電子郵件和密碼
-  2. Firebase Authentication 驗證
-  3. 同步用戶資料到本地資料庫
-  4. 儲存登入狀態到 SharedPreferences
-  5. 進入主頁面
+  1. 輸入電子郵件和密碼，或使用 Gmail OAuth 登入
+  2. Supabase Authentication 驗證
+  3. 儲存登入狀態到 SharedPreferences
+  4. 進入主頁面
 
 ### 2. 專案管理
 - **建立專案**：
@@ -381,33 +359,28 @@ cd 114-1_FCU_Network-Programming-Final-Project
 
 ## 開發注意事項
 
-### 資料同步機制
-- **Firebase ↔ SQLite**：使用 `UserSyncHelper` 同步 Firebase 用戶與本地資料庫
-- **登入時同步**：每次登入都會檢查並同步用戶資料
-- **本地優先**：大部分資料操作優先使用本地 SQLite 資料庫
+### 資料存儲機制
+- **Supabase PostgreSQL**：所有資料存儲在 Supabase 雲端資料庫
+- **即時同步**：使用 Supabase Realtime 進行聊天訊息和白板繪圖的即時同步
+- **雲端優先**：所有資料操作直接使用 Supabase API
 
 ### SharedPreferences 使用
 - **儲存位置**：`FCUPrefs`
 - **儲存內容**：
   - `email`：用戶電子郵件
-  - `uid`：Firebase UID
-  - `user_id`：本地資料庫用戶 ID
+  - `uid`：Supabase 用戶 ID
   - `project_id`：當前選中的專案 ID
   - `language`：當前語言設定（"zh" 或 "en"）
 
-### 資料庫版本管理
-- 資料庫版本：15
-- 升級策略：升級時會刪除所有舊資料並重新建立（`onUpgrade` 方法）
-
 ### 權限處理
-- 網路權限：用於 Firebase 服務
+- 網路權限：用於 Supabase 服務
 - 儲存權限：Excel 匯出功能（Android 10+ 可能不需要）
 
 ## 已知問題與限制
 
-1. **Firestore 整合**：部分功能（如 CreateIssueActivity）有 Firestore 程式碼，但主要使用 SQLite
-2. **資料同步**：目前主要為單向同步（Firebase → SQLite），雙向同步功能待完善
-3. **離線支援**：應用程式可在離線狀態下使用，但註冊/登入需要網路連線
+1. **部分功能待實現**：部分功能（如議題管理、專案管理）的 Supabase 整合待完善
+2. **好友列表**：好友列表功能需要從 Supabase 獲取，目前待實現
+3. **離線支援**：應用程式需要網路連線才能使用，所有資料存儲在 Supabase
 
 ## 版本資訊
 
@@ -425,4 +398,4 @@ cd 114-1_FCU_Network-Programming-Final-Project
 
 ---
 
-**注意**：使用本應用程式前，請確保已正確配置 Firebase 專案並提供有效的 `google-services.json` 檔案。
+**注意**：使用本應用程式前，請確保已正確配置 Supabase 專案並在 `SupabaseManager.kt` 中設定正確的 `SUPABASE_URL` 和 `SUPABASE_KEY`。

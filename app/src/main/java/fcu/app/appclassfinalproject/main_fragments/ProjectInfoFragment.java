@@ -4,8 +4,6 @@ import static android.content.Context.MODE_PRIVATE;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -19,7 +17,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import fcu.app.appclassfinalproject.GanttActivity;
 import fcu.app.appclassfinalproject.R;
 import fcu.app.appclassfinalproject.adapter.IssueAdapter;
-import fcu.app.appclassfinalproject.helper.SqlDataBaseHelper;
 import fcu.app.appclassfinalproject.model.Issue;
 import java.util.ArrayList;
 import java.util.List;
@@ -85,58 +82,13 @@ public class ProjectInfoFragment extends Fragment {
     issueList = new ArrayList<>();
     recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-    // 獲取 DataBase 相關訊息
-    SqlDataBaseHelper sqlDataBaseHelper = new SqlDataBaseHelper(requireContext());
-    SQLiteDatabase db = sqlDataBaseHelper.getReadableDatabase();
-    Cursor cursor = null;
-    Cursor issueCursor = null;
-
+    // TODO: 使用 Supabase 獲取專案和議題資訊
     int project_id = prefs.getInt("project_id", 0);
     Log.i("project_id", String.valueOf(project_id));
-    try {
-      cursor = db.rawQuery("SELECT * FROM Projects WHERE id = ?",
-          new String[]{String.valueOf(project_id)});
-
-      // 檢查是否有結果
-      if (cursor.moveToFirst()) {
-        String projectName = cursor.getString(cursor.getColumnIndexOrThrow("name"));
-        tv_projectName.setText(projectName);
-      } else {
-        tv_projectName.setText("找不到項目");
-        Log.e("ProjectInfoFragment", "找不到 ID 為 " + project_id + " 的項目");
-      }
-
-      // 查找該專案下的所有問題
-      issueCursor = db.rawQuery("SELECT * FROM Issues WHERE project_id = ?",
-          new String[]{String.valueOf(project_id)});
-      if (issueCursor.moveToFirst()) {
-        do {
-          String name = issueCursor.getString(issueCursor.getColumnIndexOrThrow("name"));
-          String summary = issueCursor.getString(issueCursor.getColumnIndexOrThrow("summary"));
-          String start_time = issueCursor.getString(
-              issueCursor.getColumnIndexOrThrow("start_time"));
-          String end_time = issueCursor.getString(issueCursor.getColumnIndexOrThrow("end_time"));
-          String status = issueCursor.getString(issueCursor.getColumnIndexOrThrow("status"));
-
-          String designee = issueCursor.getString(issueCursor.getColumnIndexOrThrow("designee"));
-          issueList.add(new Issue(name, summary, start_time, end_time, status, designee));
-
-        } while (issueCursor.moveToNext());
-      }
-    } catch (Exception e) {
-      tv_projectName.setText("加載時發生錯誤");
-      Log.e("ProjectInfoFragment", "加載時發生錯誤: " + e.getMessage(), e);
-      Toast.makeText(requireContext(), R.string.IssueList_Error + e.getMessage(),
-              Toast.LENGTH_SHORT)
-          .show();
-    } finally {
-      if (cursor != null) {
-        cursor.close();
-      }
-      if (issueCursor != null) {
-        issueCursor.close();
-      }
-    }
+    
+    // 暫時顯示提示
+    tv_projectName.setText("專案資訊（待實現 Supabase）");
+    Toast.makeText(requireContext(), "專案資訊功能待實現（使用 Supabase）", Toast.LENGTH_SHORT).show();
 
     // 設置 RecyclerView 的 Adapter
     issueAdapter = new IssueAdapter(getContext(), issueList);
