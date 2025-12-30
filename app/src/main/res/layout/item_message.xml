@@ -1,34 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- 使用 FrameLayout 作為外層容器 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
   android:layout_width="match_parent"
   android:layout_height="wrap_content"
-  android:orientation="horizontal"
-  android:padding="4dp">
+  android:padding="8dp">
 
+  <!-- 消息氣泡容器 -->
   <LinearLayout
     android:id="@+id/message_container"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:layout_gravity="start"
     android:maxWidth="280dp"
+    android:minWidth="80dp"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="12dp"
+    android:layout_marginStart="8dp"
+    android:layout_marginEnd="8dp">
 
+    <!-- 消息內容 -->
     <TextView
       android:id="@+id/tv_message"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
-      android:text="@string/item_message_content"
-      android:textSize="16sp" />
+      android:text="消息內容"
+      android:textSize="16sp"
+      android:lineSpacingExtra="2dp" />
 
+    <!-- 時間戳 -->
     <TextView
       android:id="@+id/tv_time"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
+      android:layout_gravity="end"
       android:layout_marginTop="4dp"
-      android:text="@string/item_meesage_sample_time"
-      android:textColor="#757575"
-      android:textSize="12sp" />
+      android:text="12:00"
+      android:textSize="11sp"
+      android:alpha="0.7" />
   </LinearLayout>
 
-</LinearLayout>
+</FrameLayout>

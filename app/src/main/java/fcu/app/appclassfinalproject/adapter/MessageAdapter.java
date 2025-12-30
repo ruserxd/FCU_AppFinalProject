@@ -1,10 +1,12 @@
 package fcu.app.appclassfinalproject.adapter;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
@@ -18,6 +20,8 @@ import java.util.Locale;
 
 public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageViewHolder> {
 
+  private static final String TAG = "MessageAdapter";
+
   private Context context;
   private List<Message> messageList;
   private int currentUserId;
@@ -28,6 +32,8 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     this.messageList = messageList;
     this.currentUserId = currentUserId;
     this.dateFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+
+    Log.d(TAG, "MessageAdapter 創建 - currentUserId: " + currentUserId);
   }
 
   @NonNull
@@ -42,21 +48,36 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     Message message = messageList.get(position);
     boolean isSentByMe = message.getSenderId() == currentUserId;
 
+    // 除錯日誌
+    Log.d(TAG, "消息 #" + position +
+        " - senderId: " + message.getSenderId() +
+        ", currentUserId: " + currentUserId +
+        ", isSentByMe: " + isSentByMe);
+
+    // 設置消息內容和時間
     holder.tvMessage.setText(message.getContent());
     holder.tvTime.setText(dateFormat.format(new Date(message.getTimestamp())));
 
-    LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) holder.messageContainer.getLayoutParams();
+    // 使用 FrameLayout.LayoutParams
+    FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) holder.messageContainer.getLayoutParams();
 
     if (isSentByMe) {
-      // 我发送的消息 - 靠右，蓝色背景
+      // 我發送的消息 - 靠右，藍色背景
+      Log.d(TAG, "設置為「我的消息」- 藍色、靠右");
+
       params.gravity = Gravity.END;
       holder.messageContainer.setBackgroundResource(R.drawable.message_sent_background);
       holder.tvMessage.setTextColor(context.getResources().getColor(android.R.color.white));
+      holder.tvTime.setTextColor(context.getResources().getColor(android.R.color.white));
+
     } else {
-      // 对方发送的消息 - 靠左，灰色背景
+      // 對方發送的消息 - 靠左，灰色背景
+      Log.d(TAG, "設置為「對方消息」- 灰色、靠左");
+
       params.gravity = Gravity.START;
       holder.messageContainer.setBackgroundResource(R.drawable.message_received_background);
       holder.tvMessage.setTextColor(context.getResources().getColor(android.R.color.black));
+      holder.tvTime.setTextColor(context.getResources().getColor(android.R.color.darker_gray));
     }
 
     holder.messageContainer.setLayoutParams(params);
